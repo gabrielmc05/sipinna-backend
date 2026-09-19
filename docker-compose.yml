@@ -14,6 +14,7 @@ services:
     volumes:
       - sipinna_db_data:/var/lib/mysql
       - ./db/schema.sql:/docker-entrypoint-initdb.d/1_schema.sql
+      - ./db/inserts_de_prueba.sql:/docker-entrypoint-initdb.d/2_seed.sql
 
 volumes:
   sipinna_db_data:
