@@ -1,0 +1,20 @@
+services:
+  db:
+    image: mariadb:12.3
+    container_name: sipinna_db
+    restart: unless-stopped
+
+    environment:
+      MARIADB_ROOT_PASSWORD: cambia_esta_contrasena
+      MARIADB_DATABASE: sipinna_db
+
+    ports:
+      - "3307:3306"
+
+    volumes:
+      - sipinna_db_data:/var/lib/mysql
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/1_schema.sql
+      - ./db/inserts_de_prueba.sql:/docker-entrypoint-initdb.d/2_seed.sql
+
+volumes:
+  sipinna_db_data:
