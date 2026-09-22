@@ -7,7 +7,7 @@ import (
 
 func Probando(db *sql.DB) {
 	const query string = `
-SELECT id_usuario, correo, contrasenna_encriptada FROM 'usuario';
+SELECT id_usuario, correo, contrasenna_encriptada FROM usuario;
 `
 	rows, err := db.Query(query)
 	if err != nil {
@@ -22,11 +22,8 @@ SELECT id_usuario, correo, contrasenna_encriptada FROM 'usuario';
 			contrasenna_encriptada string
 		)
 		if err := rows.Scan(&id_usuario, &correo, &contrasenna_encriptada); err != nil {
-			log.Fatal(err)
+			log.Fatal(rows.Err())
 		}
 		log.Printf("id_usuario: %d, correo: %s, contraseña encriptada: %s\n", id_usuario, correo, contrasenna_encriptada)
-	}
-	if !rows.NextResultSet() {
-		log.Fatalf("expected more result sets: %v", rows.Err())
 	}
 }

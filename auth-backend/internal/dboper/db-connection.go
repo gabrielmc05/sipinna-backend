@@ -6,6 +6,7 @@ import (
 	"github.com/joho/godotenv"
 	"log"
 	"os"
+	"strings"
 )
 
 func init() {
@@ -16,24 +17,31 @@ func init() {
 	}
 }
 
+// Se usa esta función para hacer la conexión con la respectiva
+// base de datos cuya fuente esté en las variables de entorno,
+// meramente una función wrapper para realizarlo
 func Connect() (dbsipinna *sql.DB, err error) {
-	var dataSourceName string = "root:"
+	var dataSourceName strings.Builder
 
+	dataSourceName.WriteString("root:")
 	if val, ok := os.LookupEnv("MARIADB_ROOT_PASSWORD"); ok {
-		dataSourceName += val + "@("
+		dataSourceName.WriteString(val)
+		dataSourceName.WriteString("@(")
 	} else {
 		log.Fatal("MARIADB_ROOT_PASSWORD environment variable not set.")
 	}
 	if val, ok := os.LookupEnv("MARIADB_ADDRESS"); ok {
-		dataSourceName += val + ")/"
+		dataSourceName.WriteString(val)
+		dataSourceName.WriteString(")/")
 	} else {
 		log.Fatal("MARIADB_ADDRESS environment variable not set.")
 	}
 	if val, ok := os.LookupEnv("MARIADB_DATABASE"); ok {
-		dataSourceName += val
+		dataSourceName.WriteString(val)
 	} else {
 		log.Fatal("MARIADB_DATABASE environment variable not set.")
 	}
 
-	return sql.Open("mysql", dataSourceName)
+	//log.Println(dataSourceName.String())
+	return sql.Open("mysql", dataSourceName.String())
 }
