@@ -20,9 +20,14 @@ func Connect() (dbsipinna *sql.DB, err error) {
 	var dataSourceName string = "root:"
 
 	if val, ok := os.LookupEnv("MARIADB_ROOT_PASSWORD"); ok {
-		dataSourceName += val + "@/"
+		dataSourceName += val + "@("
 	} else {
 		log.Fatal("MARIADB_ROOT_PASSWORD environment variable not set.")
+	}
+	if val, ok := os.LookupEnv("MARIADB_ADDRESS"); ok {
+		dataSourceName += val + ")/"
+	} else {
+		log.Fatal("MARIADB_ADDRESS environment variable not set.")
 	}
 	if val, ok := os.LookupEnv("MARIADB_DATABASE"); ok {
 		dataSourceName += val
