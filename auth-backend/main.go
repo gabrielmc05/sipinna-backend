@@ -1,21 +1,25 @@
 package main
 
 import (
-	"database/sql"
-	"github.com/gabrielmc05/sipinna-backend/auth-backend/internal/dboper"
-	"log"
+	//"github.com/gabrielmc05/sipinna-backend/auth-backend/internal/authfuncs"
+	"fmt"
+	//"github.com/gabrielmc05/sipinna-backend/auth-backend/internal/dboper"
+	//"github.com/ovh/symmecrypt"
 )
 
-var db *sql.DB
-
 func main() {
-	var err error
-	db, err = dboper.Connect()
+	//dboper.Setup()
+	//fmt.Println(dboper.GetUserPassword(3))
+	//dboper.CloseDB()
 
-	if err != nil {
-		log.Fatal(err)
+	//chap := authfuncs.NewCHAP("Blablablabla1284023k")
+	//fmt.Printf("%X\n", chap.Challenge())
+	//fmt.Println(chap.Authenticate(sha256.Sum256((append([]byte("Blablablabla1284023k"), chap.Challenge()...)))))
+	//fmt.Println(chap.Authenticate(sha256.Sum256((append([]byte("Hola"), chap.Challenge()...)))))
+
+	if k, err := symmecrypt.NewRandomKey("hmac"); err != nil {
+		panic(err)
+	} else {
+		fmt.Println(k.String())
 	}
-	defer db.Close()
-
-	dboper.Probando(db)
 }

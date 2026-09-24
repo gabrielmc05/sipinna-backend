@@ -1,9 +1,9 @@
 package authfuncs
 
 import (
-	"crypto/sha256"
+// "crypto/sha256"
 )
 
-func hashPassword(password string) [32]byte {
-	return sha256.Sum256([]byte(password))
-}
+//func hashPassword(password string) [32]byte {
+//	return sha256.Sum256([]byte(password))
+//}

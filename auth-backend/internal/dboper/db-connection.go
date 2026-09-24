@@ -9,19 +9,22 @@ import (
 	"strings"
 )
 
-func init() {
-	var err error
+var db *sql.DB
 
-	if err = godotenv.Load(); err != nil {
-		log.Fatal("Error loading .env file")
+func init() {
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Error loading .env file: %s.", err)
 	}
 }
 
 // Se usa esta función para hacer la conexión con la respectiva
 // base de datos cuya fuente esté en las variables de entorno,
 // meramente una función wrapper para realizarlo
-func Connect() (dbsipinna *sql.DB, err error) {
-	var dataSourceName strings.Builder
+func Setup() error {
+	var (
+		dataSourceName strings.Builder
+		err            error
+	)
 
 	dataSourceName.WriteString("root:")
 	if val, ok := os.LookupEnv("MARIADB_ROOT_PASSWORD"); ok {
@@ -42,6 +45,10 @@ func Connect() (dbsipinna *sql.DB, err error) {
 		log.Fatal("MARIADB_DATABASE environment variable not set.")
 	}
 
-	//log.Println(dataSourceName.String())
-	return sql.Open("mysql", dataSourceName.String())
+	db, err = sql.Open("mysql", dataSourceName.String())
+	return err
+}
+
+func CloseDB() error {
+	return db.Close()
 }
