@@ -22,7 +22,7 @@ func Probando(user_id uint32, newPassword string) {
 
 	query.WriteString("UPDATE usuario SET contrasenna_encriptada = UNHEX('")
 	query.WriteString(newPassword)
-	query.WriteString("') where id_usuario = ")
+	query.WriteString("') where id_usuario=")
 	query.WriteString(strconv.FormatUint(uint64(user_id), 10))
 	query.WriteByte(';')
 

@@ -3,12 +3,17 @@ package authfuncs
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"fmt"
 	"log"
+	"time"
 )
+
+const MAX_CHAP_TIME int64 = 300
 
 // Para iniciar un nuevo intento de autenticación
 type CHAP struct {
-	correctAnswer [32]byte
+	unixTimeStart int64
+	expected      [32]byte
 	challenge     *[]byte
 }
 
@@ -21,8 +26,9 @@ func NewCHAP(password string) CHAP {
 	}
 
 	return CHAP{
+		unixTimeStart: time.Now().Unix(),
 		challenge:     &challengeBuffer,
-		correctAnswer: sha256.Sum256(append([]byte(password), challengeBuffer...)),
+		expected:      sha256.Sum256(append([]byte(password), challengeBuffer...)),
 	}
 }
 
@@ -32,6 +38,12 @@ func (chap *CHAP) Challenge() []byte {
 }
 
 // Función que compara la respuesta con el reto
-func (chap *CHAP) Authenticate(answer [32]byte) bool {
-	return answer == chap.correctAnswer
+func (chap *CHAP) Authenticate(answer [32]byte, time int64) (ok bool, err error) {
+	if time < chap.unixTimeStart || time-chap.unixTimeStart > MAX_CHAP_TIME {
+		return false, fmt.Errorf("Authentication time exceeded or invalid.")
+	}
+	if answer != chap.expected {
+		return false, fmt.Errorf("Wrong answer!")
+	}
+	return true, nil
 }
