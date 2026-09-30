@@ -3,6 +3,7 @@ package keys
 
 import (
 	"crypto/aes"
+	"crypto/cipher"
 	"encoding/hex"
 	"github.com/joho/godotenv"
 	"log"
@@ -18,12 +19,16 @@ func init() {
 	if dbBlock, err = aes.NewCipher(getSymmetricDBKey()); err != nil {
 		log.Fatalf("DB cipher block could not be made: %s.\n", err)
 	}
+
+	if dbGCM, err = cipher.NewGCM(GetDBCipherBlock()); err != nil {
+		log.Fatalf("DB cipher block could not be made: %s.\n", err)
+	}
 }
 
 func getSymmetricDBKey() (dbkey []byte) {
 	if val, ok := os.LookupEnv("MARIADB_DATABASE_SYMMETRIC_KEY"); ok {
 		dbkey, _ = hex.DecodeString(val)
-		log.Printf("Key: %x, key size: %d", dbkey, len(dbkey))
+		//log.Printf("Key: %x, key size: %d", dbkey, len(dbkey))
 	} else {
 		log.Fatal("MARIADB_DATABASE_SYMMETRIC_KEY environment variable not set.")
 	}

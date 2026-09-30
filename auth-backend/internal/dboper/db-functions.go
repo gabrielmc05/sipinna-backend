@@ -6,28 +6,28 @@ import (
 	"strings"
 )
 
-//func Probando() {
-//	const query string = `
-//SELECT id_usuario, correo, contrasenna_encriptada FROM usuario;
-//`
-//	rows, err := db.Query(query)
-//	if err != nil {
-//		log.Fatalf("Error in query: %s", err)
-//	}
-//	defer rows.Close()
-//
-//	for rows.Next() {
-//		var (
-//			id_usuario  uint32
-//			correo      string
-//			contrasenna string
-//		)
-//		if err := rows.Scan(&id_usuario, &correo, &contrasenna); err != nil {
-//			log.Fatal(rows.Err())
-//		}
-//		log.Printf("id_usuario: %d, correo: %s, contraseña encriptada: %s\n", id_usuario, correo, contrasenna)
-//	}
-//}
+func Probando() {
+	const query string = `
+SELECT id_usuario, correo, contrasenna_encriptada FROM usuario;
+`
+	rows, err := db.Query(query)
+	if err != nil {
+		log.Fatalf("Error in query: %s", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var (
+			id_usuario  uint32
+			correo      string
+			contrasenna string
+		)
+		if err := rows.Scan(&id_usuario, &correo, &contrasenna); err != nil {
+			log.Fatal(rows.Err())
+		}
+		log.Printf("id_usuario: %d, correo: %s, contraseña encriptada: %s\n", id_usuario, correo, contrasenna)
+	}
+}
 
 func GetUserPassword(user_id uint32) string {
 	var (
