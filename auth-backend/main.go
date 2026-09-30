@@ -3,14 +3,15 @@ package main
 import (
 	"fmt"
 	//"github.com/gabrielmc05/sipinna-backend/auth-backend/internal/authfuncs"
-	//"github.com/gabrielmc05/sipinna-backend/auth-backend/internal/dboper"
+	"github.com/gabrielmc05/sipinna-backend/auth-backend/internal/dboper"
 	//"github.com/gabrielmc05/sipinna-backend/auth-backend/internal/keys"
 )
 
 func main() {
-	//dboper.Setup()
-	//fmt.Println(dboper.GetUserPassword(3))
-	//dboper.CloseDB()
+	dboper.Setup()
+	dboper.Probando(3, "Hola cachorras :3")
+	fmt.Println(dboper.GetUserPassword(3))
+	dboper.CloseDB()
 
 	//chap := authfuncs.NewCHAP("Blablablabla1284023k")
 	//fmt.Printf("%X\n", chap.Challenge())

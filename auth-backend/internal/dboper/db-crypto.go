@@ -2,6 +2,7 @@ package dboper
 
 import (
 	"crypto/rand"
+	"encoding/hex"
 	"fmt"
 	"github.com/gabrielmc05/sipinna-backend/auth-backend/internal/keys"
 	"log"
@@ -21,25 +22,22 @@ func EncryptUserPassword(password string) (encrypted string, err error) {
 		return "", err
 	}
 
-	return string(keys.GetDBCipherGCM().Seal(nonce, nonce, passwordBytes, nil)), err
+	return hex.EncodeToString(keys.GetDBCipherGCM().Seal(nonce, nonce, passwordBytes, nil)), err
 }
 
 // DecryptUserPassword se utiliza para desencriptar las contraseñas con la
 // llave simétrica de la base de datos.
-func DecryptUserPassword(encrypted string) (password string, err error) {
-	var (
-		encryptedBytes []byte = []byte(encrypted)
-		passwordBytes  []byte
-	)
+func DecryptUserPassword(encrypted []byte) (password string, err error) {
+	var passwordBytes []byte
 
-	if len(encryptedBytes) < keys.GetDBCipherGCM().NonceSize() {
+	if len(encrypted) < keys.GetDBCipherGCM().NonceSize() {
 		return "", fmt.Errorf("EncryptedBytes too short.")
 	}
 
 	passwordBytes, err = keys.GetDBCipherGCM().Open(
 		nil,
-		encryptedBytes[:keys.GetDBCipherGCM().NonceSize()],
-		encryptedBytes[keys.GetDBCipherGCM().NonceSize():],
+		encrypted[:keys.GetDBCipherGCM().NonceSize()],
+		encrypted[keys.GetDBCipherGCM().NonceSize():],
 		nil,
 	)
 	return string(passwordBytes), err
