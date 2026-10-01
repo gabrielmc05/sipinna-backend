@@ -13,8 +13,8 @@ const MAX_CHAP_TIME int64 = 300
 // Para iniciar un nuevo intento de autenticación
 type CHAP struct {
 	unixTimeStart int64
-	expected      [32]byte
 	challenge     *[]byte
+	expected      [32]byte
 }
 
 // Debe generarse cada que se quiera un nuevo intento
@@ -38,12 +38,15 @@ func (chap *CHAP) Challenge() []byte {
 }
 
 // Función que compara la respuesta con el reto
-func (chap *CHAP) Authenticate(answer [32]byte, time int64) (ok bool, err error) {
-	if time < chap.unixTimeStart || time-chap.unixTimeStart > MAX_CHAP_TIME {
-		return false, fmt.Errorf("Authentication time exceeded or invalid.")
+func (chap *CHAP) Authenticate(response [32]byte, authTime int64) (ok bool, err error) {
+	if authTime < chap.unixTimeStart || authTime-chap.unixTimeStart > MAX_CHAP_TIME {
+		return false, fmt.Errorf(
+			"Authentication time (started: %s) exceeded or invalid: %s.",
+			time.Unix(chap.unixTimeStart, 0).UTC(),
+			time.Unix(authTime, 0).UTC())
 	}
-	if answer != chap.expected {
-		return false, fmt.Errorf("Wrong answer!")
+	if response != chap.expected {
+		return false, fmt.Errorf("Wrong response!")
 	}
 	return true, nil
 }

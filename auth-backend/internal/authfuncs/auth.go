@@ -5,7 +5,7 @@ import (
 // "log"
 )
 
-var CHAPS map[uint32]CHAP
+var CHAPS map[uint32]*CHAP
 
 //func NewAuthTry(user_id uint32) (ok bool) {
 //	ok = false
