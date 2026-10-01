@@ -42,12 +42,10 @@ func Probando(user_id uint32, newPassword string) {
 	log.Printf("Last Insert ID: %d, Rows Affected: %d", lastInsertID, rowsAffected)
 }
 
-func GetUserPasswordHash(user_id uint32) string {
+func GetUserPasswordHash(user_id uint32) (password string, err error) {
 	var (
 		query            strings.Builder
 		hash_contrasenna []byte
-		password         string
-		err              error
 	)
 	query.WriteString("SELECT hash_contrasenna FROM usuario where id_usuario=")
 	query.WriteString(strconv.FormatUint(uint64(user_id), 10))
@@ -55,7 +53,8 @@ func GetUserPasswordHash(user_id uint32) string {
 
 	err = db.QueryRow(query.String()).Scan(&hash_contrasenna)
 	if err != nil {
-		log.Fatalf("Error: %s, in query: %s", err, query.String())
+		log.Printf("Error: %s, in query: %s", err, query.String())
+		return "", err
 	}
 
 	password, err = DecryptUserPasswordHash(hash_contrasenna)
@@ -63,5 +62,5 @@ func GetUserPasswordHash(user_id uint32) string {
 		log.Fatal(err)
 	}
 
-	return password
+	return password, nil
 }
