@@ -2,16 +2,19 @@ package dboper
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"github.com/gabrielmc05/sipinna-backend/auth-backend/internal/keys"
 	"log"
 )
 
-// EncryptUserPassword se utiliza para encriptar las contraseñas con la
-// llave simétrica de la base de datos.
-func EncryptUserPassword(password string) (encrypted string, err error) {
+// EncryptHashUserPassword se utiliza para aplicarles el algoritmo Argon2id
+// y luego, encriptar las contraseñas con la llave simétrica de la base de
+// datos, se usa en el registro.
+func EncryptHashUserPassword(password string) (encryptedHash string, err error) {
 	var (
-		passwordBytes []byte = []byte(password)
+		passwordBytes [32]byte = sha256.Sum256([]byte(password))
 		nonce         []byte
 	)
 
@@ -21,25 +24,22 @@ func EncryptUserPassword(password string) (encrypted string, err error) {
 		return "", err
 	}
 
-	return string(keys.GetDBCipherGCM().Seal(nonce, nonce, passwordBytes, nil)), err
+	return hex.EncodeToString(keys.GetDBCipherGCM().Seal(nonce, nonce, passwordBytes[:], nil)), err
 }
 
-// DecryptUserPassword se utiliza para desencriptar las contraseñas con la
-// llave simétrica de la base de datos.
-func DecryptUserPassword(encrypted string) (password string, err error) {
-	var (
-		encryptedBytes []byte = []byte(encrypted)
-		passwordBytes  []byte
-	)
+// DecryptUserPasswordHash se utiliza para desencriptar los Hash (Argon2id)
+// de contraseñas con la llave simétrica de la base de datos.
+func DecryptUserPasswordHash(encrypted []byte) (password string, err error) {
+	var passwordBytes []byte
 
-	if len(encryptedBytes) < keys.GetDBCipherGCM().NonceSize() {
+	if len(encrypted) < keys.GetDBCipherGCM().NonceSize() {
 		return "", fmt.Errorf("EncryptedBytes too short.")
 	}
 
 	passwordBytes, err = keys.GetDBCipherGCM().Open(
 		nil,
-		encryptedBytes[:keys.GetDBCipherGCM().NonceSize()],
-		encryptedBytes[keys.GetDBCipherGCM().NonceSize():],
+		encrypted[:keys.GetDBCipherGCM().NonceSize()],
+		encrypted[keys.GetDBCipherGCM().NonceSize():],
 		nil,
 	)
 	return string(passwordBytes), err

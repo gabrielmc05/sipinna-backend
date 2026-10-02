@@ -10,9 +10,9 @@ VALUES (@territorio_id, 'SIPINNA Atizapán de Zaragoza', 'SIPINNA',
 SET @institucion_id = LAST_INSERT_ID();
 
 -- Usuario que será Administrador
-INSERT INTO usuario (correo, contrasenna_encriptada, nombre, apellidos, telefono)
+INSERT INTO usuario (correo, hash_contrasenna, nombre, apellidos, telefono)
 VALUES ('admin.prueba@sipinna.gob.mx',
-        '$argon2id$v=19$m=65536,t=3,p=4$placeholder_hash_admin',
+        CONVERT('loooooool' USING BINARY),
         'Ana', 'Pérez López', '5551112222');
 SET @usuario_admin_id = LAST_INSERT_ID();
 
@@ -20,9 +20,9 @@ INSERT INTO administrador (id_usuario, id_institucion, rol)
 VALUES (@usuario_admin_id, @institucion_id, 'Administrador');
 
 -- Usuario que será el Reportante
-INSERT INTO usuario (correo, contrasenna_encriptada, nombre, apellidos, telefono)
+INSERT INTO usuario (correo, hash_contrasenna, nombre, apellidos, telefono)
 VALUES ('reportante.prueba@example.com',
-        '$argon2id$v=19$m=65536,t=3,p=4$placeholder_hash_reportante',
+        CONVERT('Papupro38' USING BINARY),
         'Juan', 'Ramírez Soto', NULL);
 SET @usuario_reportante_id = LAST_INSERT_ID();
 

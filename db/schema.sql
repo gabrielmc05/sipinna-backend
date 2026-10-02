@@ -17,7 +17,7 @@ CREATE TABLE `territorio` (
 CREATE TABLE `usuario` (
   `id_usuario` int(11) NOT NULL AUTO_INCREMENT,
   `correo` varchar(254) CHARACTER SET utf8mb3 COLLATE utf8mb3_uca1400_ai_ci NOT NULL,
-  `contrasenna_encriptada` varchar(255) NOT NULL,
+  `hash_contrasenna` varbinary(255) NOT NULL,
   `nombre` varchar(30) CHARACTER SET utf8mb3 COLLATE utf8mb3_uca1400_ai_ci NOT NULL,
   `apellidos` varchar(100) CHARACTER SET utf8mb3 COLLATE utf8mb3_uca1400_ai_ci NOT NULL,
   `telefono` varchar(30) DEFAULT NULL,
