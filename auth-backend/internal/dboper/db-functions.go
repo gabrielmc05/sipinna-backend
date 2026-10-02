@@ -51,14 +51,12 @@ func GetUserPasswordHash(user_id uint32) (password string, err error) {
 	query.WriteString(strconv.FormatUint(uint64(user_id), 10))
 	query.WriteByte(';')
 
-	err = db.QueryRow(query.String()).Scan(&hash_contrasenna)
-	if err != nil {
+	if err = db.QueryRow(query.String()).Scan(&hash_contrasenna); err != nil {
 		log.Printf("Error: %s, in query: %s", err, query.String())
 		return "", err
 	}
 
-	password, err = DecryptUserPasswordHash(hash_contrasenna)
-	if err != nil {
+	if password, err = DecryptUserPasswordHash(hash_contrasenna); err != nil {
 		log.Fatal(err)
 	}
 

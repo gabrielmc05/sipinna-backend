@@ -1,6 +1,7 @@
 package authfuncs
 
 import (
+	//"encoding/base64"
 	"fmt"
 	"github.com/gabrielmc05/sipinna-backend/auth-backend/internal/dboper"
 	"log"
@@ -20,12 +21,12 @@ func init() {
 	go cleanCHAPS(ticker)
 }
 
-func NewAuthTry(user_id uint32) (err error) {
+func NewAuthTry(user_id uint32) (challenge []byte, err error) {
 	var passwordHash string
-	passwordHash, err = dboper.GetUserPasswordHash(user_id)
-	if err != nil {
+
+	if passwordHash, err = dboper.GetUserPasswordHash(user_id); err != nil {
 		log.Printf("The new authentication attempt, by user with id: %d, has failed: %s", user_id, err)
-		return err
+		return nil, err
 	}
 
 	var chap CHAP = NewCHAP(passwordHash)
@@ -34,7 +35,7 @@ func NewAuthTry(user_id uint32) (err error) {
 	CHAPS[user_id] = chap
 	CHAPSMutex.Unlock()
 
-	return nil
+	return *chap.challenge, nil
 }
 
 func Authenticate(user_id uint32, response [32]byte) (ok bool, err error) {
