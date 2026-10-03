@@ -2,12 +2,16 @@ package main
 
 import (
 	"net/http"
-	"strings"
+	"database/sql"
 
-	"github.com/gabrielmc05/sipinna-backend/auth-API/internal/auth"
+	"github.com/gabrielmc05/sipinna-backend/auth-API/internal/authbackend"
 	"github.com/gabrielmc05/sipinna-backend/auth-API/internal/db"
 	"github.com/gin-gonic/gin"
 )
+
+// net/http aporta los códigos de estado HTTP y database/sql permite reconocer
+// errores específicos de consultas. Los otros imports son paquetes del proyecto
+// y Gin, el framework que recibe las solicitudes y construye las respuestas.
 
 // Referencias Bibliograficas
 // https://gin-gonic.com/en/docs/routing/api-design/
@@ -16,6 +20,7 @@ import (
 // (body) de las solicitudes. Los textos dentro de `json:"..."` son los nombres
 // de las propiedades que deben venir en el JSON enviado por el cliente.
 type LoginInput struct {
+	// Los nombres después de json: son las claves esperadas en el JSON.
 	Correo   string `json:"correo"`
 	Password string `json:"password"`
 }
@@ -31,8 +36,6 @@ type RecuperarPasswordInput struct {
 	Correo string `json:"correo"`
 }
 
-// Un endpoint es una ruta HTTP que permite al cliente pedir una acción al servidor.
-// En Gin, la función que recibe *gin.Context puede leer la solicitud y escribir la respuesta.
 
 // func registro(c *gin.Context) {
 // 	var input RegistroInput
@@ -46,69 +49,53 @@ type RecuperarPasswordInput struct {
 // 	})
 // }
 
-func registro(c *gin.Context) {
-	var input RegistroInput
-	// ShouldBindJSON lee el JSON del body e intenta convertirlo a RegistroInput.
-	// `&input` pasa la dirección de la variable para que Gin pueda llenarla.
-	if err := c.ShouldBindJSON(&input); err != nil {
-		// Si el JSON falta o no tiene el formato esperado, respondemos con HTTP 400.
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Datos de registro invalidos"})
-		return
-	}
 
-	// Nunca guardamos la contraseña original: HashPassword genera un hash seguro
-	// que sí se puede guardar. El error se comprueba antes de continuar.
-	hashedPassword, err := auth.HashPassword(input.Password)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "No se pudo procesar la contraseña"})
-		return
-	}
-
-	// DB.Exec ejecuta una instrucción SQL que no devuelve filas. Los signos ?
-	// son parámetros: el driver inserta los valores por separado para evitar
-	// construir la consulta concatenando texto recibido del usuario.
-	_, err = db.DB.Exec(
-		"INSERT INTO usuario (correo, contrasenna_encriptada, nombre, apellidos) VALUES (?, ?, ?, ?)",
-		input.Correo, hashedPassword, input.Nombre, input.Apellidos,
-	)
-	if err != nil {
-		// MariaDB/MySQL suele indicar así que el correo ya existe (por una restricción
-		// UNIQUE). Otros errores de base de datos reciben una respuesta genérica.
-		if strings.Contains(err.Error(), "Duplicate entry") {
-			c.JSON(http.StatusConflict, gin.H{"error": "Ese correo ya esta registrado, por favor intenta con otro"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "No se pudo crear el usuario"})
-		return
-	}
-
-	// 201 Created significa que el servidor creó correctamente el recurso.
-	c.JSON(http.StatusCreated, gin.H{
-		"mensaje": "Usuario creado de manera exitosa",
-	})
-}
-
-// login recibe y valida el formato del JSON de inicio de sesión.
-// Por ahora solo responde "Login exitoso": todavía no busca al usuario,
-// no verifica su contraseña y tampoco genera un token.
 func login(c *gin.Context) {
 	var input LoginInput
+	// ShouldBindJSON convierte el cuerpo JSON de la solicitud a la estructura
+	// LoginInput. &input pasa su dirección para que Gin pueda llenarla.
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Datos invalidos"})
 		return
+	} 
+
+	// el valor se envía separado de la consulta y no se concatena al texto SQL.
+	// Scan copia la columna obtenida dentro de idUsuario.
+	var idUsuario uint32
+	err := db.DB.QueryRow("SELECT id_usuario FROM usuario WHERE correo = ?", input.Correo).Scan(&idUsuario)
+	if err == sql.ErrNoRows {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "No se encontró un usuario con ese correo"})
+		return
+	} else if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al consultar el usuario"})
+		return
+	} 
+
+	// Se pide al auth-backend un reto aleatorio para este usuario.
+	challenge, err := authbackend.RequestChallenge(idUsuario)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Credenciales invalidas"})
+		return
 	}
 
-	// 200 OK indica que la solicitud fue atendida. En este punto es una respuesta
-	// provisional, porque aún no se comprobó que las credenciales sean correctas.
+	// Se envían la contraseña y el reto al cliente interno, que calcula la prueba
+	// criptográfica y pide al servicio que la valide. Si es correcta, devuelve un token.
+	token, err := authbackend.VerifyChallenge(idUsuario, input.Password, challenge)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Credenciales invalidas"})
+		return
+	}
+
+	// c.JSON serializa este mapa como JSON. 200 OK indica que el login terminó bien.
 	c.JSON(http.StatusOK, gin.H{
-		// Regresa un mensaje
 		"mensaje": "Login exitoso",
-		// Regresa el token
+		"token":   token,
 	})
 }
 
 func recuperarPassword(c *gin.Context) {
 	var input RecuperarPasswordInput
+	// Lee y valida que el cuerpo tenga la forma esperada; input.Correo es el correo recibido.
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Se requiere un correo"})
 		return
@@ -146,10 +133,10 @@ func main() {
 
 	router := gin.Default()
 
-	// Cada línea registra un método HTTP y su ruta, y la asocia con la función
-	// que atenderá esa solicitud. POST suele usarse para enviar datos o ejecutar
-	// acciones; GET suele usarse para consultar información.
-	router.POST("/registro", registro)
+	// Cada registro conecta un método HTTP y una ruta con su manejador.
+	// Por ejemplo, POST /login ejecuta login y GET /verificar-sesion ejecuta
+	// verificarSesion. POST suele enviar datos/acciones; GET suele consultar.
+	// router.POST("/registro", registro)
 	router.POST("/login", login)
 	router.POST("/recuperar-password", recuperarPassword)
 	router.GET("/verificar-sesion", verificarSesion)

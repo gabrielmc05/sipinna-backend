@@ -22,7 +22,7 @@ func init() {
 }
 
 func main() {
-	r.Run()
+	r.Run(":8081")
 }
 
 func AuthRequest(c *gin.Context) {
