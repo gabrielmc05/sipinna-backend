@@ -107,7 +107,5 @@ func Auth(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"token": token,
-	})
+	c.JSON(http.StatusCreated, token)
 }
