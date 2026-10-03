@@ -26,18 +26,18 @@ func Probando(user_id uint32, newPassword string) {
 	query.WriteString(strconv.FormatUint(uint64(user_id), 10))
 	query.WriteByte(';')
 
-	result, err = db.Exec(query.String())
-	if err != nil {
+	if result, err = db.Exec(query.String()); err != nil {
 		log.Printf("Error in query: %s", err)
+		return
 	}
 
-	lastInsertID, err = result.LastInsertId()
-	if err != nil {
+	if lastInsertID, err = result.LastInsertId(); err != nil {
 		log.Printf("Error in query: %s", err)
+		return
 	}
-	rowsAffected, err = result.RowsAffected()
-	if err != nil {
+	if rowsAffected, err = result.RowsAffected(); err != nil {
 		log.Printf("Error in query: %s", err)
+		return
 	}
 	log.Printf("Last Insert ID: %d, Rows Affected: %d", lastInsertID, rowsAffected)
 }

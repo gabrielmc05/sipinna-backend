@@ -3,10 +3,13 @@ package dboper
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"fmt"
 	"github.com/gabrielmc05/sipinna-backend/auth-backend/internal/keys"
 	"log"
+	"strconv"
+	"strings"
 )
 
 // EncryptHashUserPassword se utiliza para aplicarles el algoritmo Argon2id
@@ -43,4 +46,61 @@ func DecryptUserPasswordHash(encrypted []byte) (password string, err error) {
 		nil,
 	)
 	return string(passwordBytes), err
+}
+
+func NewUserSignatureKey(user_id uint32) (key []byte, err error) {
+	var (
+		query        strings.Builder
+		result       sql.Result
+		lastInsertID int64
+		rowsAffected int64
+		llave_firma  string
+	)
+
+	key = make([]byte, 32)
+	if _, err = rand.Read(key); err != nil {
+		log.Printf("Error at creating signature key for user with id %d: %s", user_id, err)
+		return nil, err
+	}
+
+	llave_firma = hex.EncodeToString(key)
+	query.WriteString("INSERT ON token (id_usuario,llave_firma) VALUES (")
+	query.WriteString(strconv.FormatUint(uint64(user_id), 10))
+	query.WriteString(",UNHEX('")
+	query.WriteString(llave_firma)
+	query.WriteString("') ON DUPLICATE KEY UPDATE llave_firma=UNHEX('")
+	query.WriteString(llave_firma)
+	query.WriteString("');")
+
+	if result, err = db.Exec(query.String()); err != nil {
+		log.Printf("Error in query: %s", err)
+		return nil, err
+	}
+
+	if lastInsertID, err = result.LastInsertId(); err != nil {
+		log.Printf("Error in query: %s", err)
+		return nil, err
+	}
+	if rowsAffected, err = result.RowsAffected(); err != nil {
+		log.Printf("Error in query: %s", err)
+		return nil, err
+	}
+	log.Printf("Last Insert ID: %d, Rows Affected: %d", lastInsertID, rowsAffected)
+
+	return key, nil
+}
+
+func GetUserSignatureKey(user_id uint32) (key []byte, err error) {
+	var query strings.Builder
+
+	query.WriteString("SELECT llave_firma FROM usuario where id_usuario=")
+	query.WriteString(strconv.FormatUint(uint64(user_id), 10))
+	query.WriteByte(';')
+
+	if err = db.QueryRow(query.String()).Scan(&key); err != nil {
+		log.Printf("Error: %s, in query: %s", err, query.String())
+		return nil, err
+	}
+
+	return key, nil
 }
