@@ -65,6 +65,7 @@ func Auth(c *gin.Context) {
 		json     authJSON
 		err      error
 		response []byte
+		token    string
 	)
 
 	if err = c.ShouldBindJSON(&json); err != nil {
@@ -98,7 +99,13 @@ func Auth(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"token": "",
-	})
+	if token, err = authfuncs.GenerateToken(json.User_id); err != nil {
+		c.Error(err)
+		c.JSON(http.StatusExpectationFailed, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, token)
 }

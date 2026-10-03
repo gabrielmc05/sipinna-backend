@@ -38,6 +38,24 @@ func NewAuthTry(user_id uint32) (challenge []byte, err error) {
 	return *chap.challenge, nil
 }
 
+/* TESTING PURPOSES ONLY */
+//func NewAuthTry(user_id uint32) (expected []byte, challenge []byte, err error) {
+//	var passwordHash string
+//
+//	if passwordHash, err = dboper.GetUserPasswordHash(user_id); err != nil {
+//		log.Printf("The new authentication attempt, by user with id: %d, has failed: %s", user_id, err)
+//		return nil, nil, err
+//	}
+//
+//	var chap CHAP = NewCHAP(passwordHash)
+//
+//	CHAPSMutex.Lock()
+//	CHAPS[user_id] = chap
+//	CHAPSMutex.Unlock()
+//
+//	return chap.expected[:], *chap.challenge, nil
+//}
+
 func Authenticate(user_id uint32, response [32]byte) (ok bool, err error) {
 	var (
 		authAttemptTime time.Time = time.Now()
