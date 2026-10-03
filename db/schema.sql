@@ -234,3 +234,17 @@ CREATE TABLE `seguimiento` (
     FOREIGN KEY (`folio`)
     REFERENCES `expediente` (`folio`)
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+
+-- =========================================================
+-- 13. token
+-- Depende de: usuario
+-- =========================================================
+
+CREATE TABLE `token` (
+  `id_usuario` int(11) NOT NULL,
+  `llave_firma` binary(32) DEFAULT NULL,
+  PRIMARY KEY (`id_usuario`),
+  CONSTRAINT `id_usuario`
+    FOREIGN KEY (`id_usuario`)
+    REFERENCES `usuario` (`id_usuario`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;

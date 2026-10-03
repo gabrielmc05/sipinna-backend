@@ -66,3 +66,7 @@ VALUES ('RPT0000001', @institucion_id, @usuario_admin_id,
 INSERT INTO seguimiento (folio, id_usuario, descripcion, fecha, fecha_aprox_seguimiento)
 VALUES ('RPT0000001', @usuario_admin_id,
         'Se recibió el reporte y se asignó a revisión inicial.', CURRENT_DATE, NULL);
+ 
+-- Token
+INSERT INTO token (id_usuario, llave_firma)
+VALUES (3, CONVERT('12345' USING BINARY));
