@@ -64,11 +64,11 @@ func NewUserSignatureKey(user_id uint32) (key []byte, err error) {
 	}
 
 	llave_firma = hex.EncodeToString(key)
-	query.WriteString("INSERT ON token (id_usuario,llave_firma) VALUES (")
+	query.WriteString("INSERT INTO token(id_usuario,llave_firma)VALUES(")
 	query.WriteString(strconv.FormatUint(uint64(user_id), 10))
 	query.WriteString(",UNHEX('")
 	query.WriteString(llave_firma)
-	query.WriteString("') ON DUPLICATE KEY UPDATE llave_firma=UNHEX('")
+	query.WriteString("'))ON DUPLICATE KEY UPDATE llave_firma=UNHEX('")
 	query.WriteString(llave_firma)
 	query.WriteString("');")
 
