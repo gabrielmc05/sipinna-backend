@@ -6,37 +6,6 @@ import (
 	"log"
 )
 
-func Probando(user_id uint32, newPassword string) {
-	var (
-		err          error
-		result       sql.Result
-		lastInsertID int64
-		rowsAffected int64
-	)
-	newPassword, err = EncryptHashUserPassword(newPassword)
-	if err != nil {
-		log.Println(err)
-	}
-
-	if result, err = db.Exec("UPDATE usuario SET hash_contrasenna=UNHEX(?) where id_usuario=?",
-		newPassword, user_id); err != nil {
-		log.Printf("Error in query: %s", err)
-		return
-	}
-
-	if lastInsertID, err = result.LastInsertId(); err != nil {
-		err = fmt.Errorf("Error: in query: %s", err)
-		log.Print(err)
-		return
-	}
-	if rowsAffected, err = result.RowsAffected(); err != nil {
-		err = fmt.Errorf("Error: in query: %s", err)
-		log.Print(err)
-		return
-	}
-	log.Printf("Last Insert ID: %d, Rows Affected: %d", lastInsertID, rowsAffected)
-}
-
 func GetUserPasswordHash(user_id uint32) (password string, err error) {
 	var (
 		hash_contrasenna []byte
@@ -57,7 +26,7 @@ func GetUserPasswordHash(user_id uint32) (password string, err error) {
 }
 
 func GetUserSignatureKey(user_id uint32) (key []byte, err error) {
-	if err = db.QueryRow("SELECT llave_firma FROM usuario where id_usuario=?",
+	if err = db.QueryRow("SELECT llave_firma FROM token where id_usuario=?",
 		user_id).Scan(&key); err != nil {
 		err = fmt.Errorf("Error: in query: %s", err)
 		log.Print(err)
@@ -118,4 +87,37 @@ func NewUser(email, password, name, surname string, phoneNumber *string) (user_i
 	log.Printf("Last Insert ID: %d, Rows Affected: %d", lastInsertID, rowsAffected)
 
 	return uint32(lastInsertID), nil
+}
+
+func ChangeUserPassword(user_id uint32, newPassword string) (err error) {
+	var (
+		result       sql.Result
+		lastInsertID int64
+		rowsAffected int64
+	)
+
+	if newPassword, err = EncryptHashUserPassword(newPassword); err != nil {
+		log.Println(err)
+	}
+
+	if result, err = db.Exec("UPDATE usuario SET hash_contrasenna=UNHEX(?) where id_usuario=?",
+		newPassword, user_id); err != nil {
+		err = fmt.Errorf("Error: in query: %s", err)
+		log.Print(err)
+		return err
+	}
+
+	if lastInsertID, err = result.LastInsertId(); err != nil {
+		err = fmt.Errorf("Error: in query: %s", err)
+		log.Print(err)
+		return err
+	}
+	if rowsAffected, err = result.RowsAffected(); err != nil {
+		err = fmt.Errorf("Error: in query: %s", err)
+		log.Print(err)
+		return err
+	}
+	log.Printf("Last Insert ID: %d, Rows Affected: %d", lastInsertID, rowsAffected)
+
+	return nil
 }

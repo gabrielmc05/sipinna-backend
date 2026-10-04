@@ -60,9 +60,10 @@ func NewUserSignatureKey(user_id uint32) (key []byte, err error) {
 		return nil, err
 	}
 
+	llave_firma = hex.EncodeToString(key)
 	if result, err = db.Exec(
 		"INSERT INTO token (id_usuario,llave_firma) VALUES (?,UNHEX(?)) ON DUPLICATE KEY UPDATE llave_firma=UNHEX(?)",
-		user_id, llave_firma); err != nil {
+		user_id, llave_firma, llave_firma); err != nil {
 		err = fmt.Errorf("Error: in query: %s", err)
 		log.Print(err)
 		return nil, err
