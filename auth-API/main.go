@@ -56,6 +56,7 @@ func loginChallenge(c *gin.Context) {
 	})
 }
 
+// segunda funcion login encargada de recibir la respuesta del challenge y enviar el token al cliente 
 func loginVerify(c *gin.Context) {
 	
 	var input LoginResponseInput
@@ -65,8 +66,7 @@ func loginVerify(c *gin.Context) {
 		return
 	}
 
-	// El cliente calcula la respuesta al reto; aquí se envía al servicio
-	// de autenticación para validarla y obtener un token.
+	// El cliente calcula la respuesta al reto, aquí se envía al servicio de autenticación para validarla y obtener un token.
 	token, err := authbackend.VerifyChallenge(input.UserID, input.Response)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Credenciales invalidas"})
@@ -78,8 +78,7 @@ func loginVerify(c *gin.Context) {
 
 func registro(c *gin.Context) {
 	var input RegistroInput
-	// Primero se comprueba que el cuerpo tenga un JSON válido con los campos
-	// que corresponden a RegistroInput.
+	
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Datos de registro invalidos"})
 		return
@@ -92,8 +91,6 @@ func registro(c *gin.Context) {
 		return
 	}
 
-	// StatusCreated (201) indica que el recurso, en este caso el usuario,
-	// fue creado correctamente.
 	c.JSON(http.StatusCreated, gin.H{
 		"user_id": userID,
 		"mensaje": "Usuario creado de manera exitosa",
@@ -101,7 +98,7 @@ func registro(c *gin.Context) {
 }
 
 func cambiarContrasenna(c *gin.Context) {
-	// El correo se obtiene de :correo en la ruta.
+	
 	correo := c.Param("correo")
 
 	var input CambiarContrasenaInput
@@ -110,8 +107,7 @@ func cambiarContrasenna(c *gin.Context) {
 		return
 	}
 
-	// El token de autorización normalmente llega en el encabezado HTTP
-	// Authorization. El servicio de autenticación lo validará.
+	// El token de autorización en el encabezado Authorization (por verificar)
 	token := c.GetHeader("Authorization")
 	if token == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Falta token de autenticacion"})
@@ -128,17 +124,13 @@ func cambiarContrasenna(c *gin.Context) {
 }
 
 func main() {
-	// gin.Default crea el enrutador e incluye middleware básico, como
-	// registro de solicitudes y recuperación ante errores inesperados.
+	
 	router := gin.Default()
 
-	// Cada ruta conecta un método HTTP y una URL con la función que la atiende.
-	// :correo es un parámetro de ruta que se puede leer con c.Param("correo").
 	router.GET("/Login/:correo", loginChallenge)
 	router.POST("/Login/", loginVerify)
 	router.POST("/Registro/", registro)
 	router.PUT("/Contrasenna/:correo", cambiarContrasenna)
 
-	// Inicia el servidor HTTP. Sin argumentos, Gin escucha en el puerto 8080.
 	router.Run()
 }
