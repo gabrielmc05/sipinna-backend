@@ -2,38 +2,27 @@ package main
 
 import (
 	"net/http"
-	"database/sql"
 
 	"github.com/gabrielmc05/sipinna-backend/auth-API/internal/authbackend"
-	"github.com/gabrielmc05/sipinna-backend/auth-API/internal/db"
 	"github.com/gin-gonic/gin"
 )
 
-// net/http aporta los códigos de estado HTTP y database/sql permite reconocer
-// errores específicos de consultas. Los otros imports son paquetes del proyecto
-// y Gin, el framework que recibe las solicitudes y construye las respuestas.
 
-// Referencias Bibliograficas
-// https://gin-gonic.com/en/docs/routing/api-design/
-
-// Estas estructuras describen los datos que la API espera recibir en el cuerpo
-// (body) de las solicitudes. Los textos dentro de `json:"..."` son los nombres
-// de las propiedades que deben venir en el JSON enviado por el cliente.
-type LoginInput struct {
-	// Los nombres después de json: son las claves esperadas en el JSON.
-	Correo   string `json:"correo"`
-	Password string `json:"password"`
+type LoginResponseInput struct {
+	UserID   uint32 `json:"user_id"`
+	Response string `json:"response"`
 }
 
 type RegistroInput struct {
-	Nombre    string `json:"nombre"`
-	Apellidos string `json:"apellidos"`
-	Correo    string `json:"correo"`
-	Password  string `json:"password"`
+	Nombre   string `json:"nombre"`
+	Apellido string `json:"apellido"`
+	Correo   string `json:"correo"`
+	Password string `json:"contraseña"`
+	Telefono string `json:"numero_de_telefono"`
 }
 
-type RecuperarPasswordInput struct {
-	Correo string `json:"correo"`
+type CambiarContrasenaInput struct {
+	NuevaContrasena string `json:"nueva_contraseña"`
 }
 
 
@@ -49,100 +38,107 @@ type RecuperarPasswordInput struct {
 // 	})
 // }
 
+// primera funcion login encargada de recibir el correo y enviar el challenge al cliente
+func loginChallenge(c *gin.Context) {
 
-func login(c *gin.Context) {
-	var input LoginInput
-	// ShouldBindJSON convierte el cuerpo JSON de la solicitud a la estructura
-	// LoginInput. &input pasa su dirección para que Gin pueda llenarla.
+	correo := c.Param("correo")
+
+	result, err := authbackend.RequestChallenge(correo)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Credenciales invalidas"})
+		return
+	}
+
+	c.JSON(http.StatusAccepted, gin.H{
+		"challenge": result.Challenge,
+		"mensaje":   "Intento aceptado",
+		"user_id":   result.UserID,
+	})
+}
+
+func loginVerify(c *gin.Context) {
+	
+	var input LoginResponseInput
+	
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Datos invalidos"})
 		return
-	} 
+	}
 
-	// el valor se envía separado de la consulta y no se concatena al texto SQL.
-	// Scan copia la columna obtenida dentro de idUsuario.
-	var idUsuario uint32
-	err := db.DB.QueryRow("SELECT id_usuario FROM usuario WHERE correo = ?", input.Correo).Scan(&idUsuario)
-	if err == sql.ErrNoRows {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "No se encontró un usuario con ese correo"})
-		return
-	} else if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error al consultar el usuario"})
-		return
-	} 
-
-	// Se pide al auth-backend un reto aleatorio para este usuario.
-	challenge, err := authbackend.RequestChallenge(idUsuario)
+	// El cliente calcula la respuesta al reto; aquí se envía al servicio
+	// de autenticación para validarla y obtener un token.
+	token, err := authbackend.VerifyChallenge(input.UserID, input.Response)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Credenciales invalidas"})
 		return
 	}
 
-	// Se envían la contraseña y el reto al cliente interno, que calcula la prueba
-	// criptográfica y pide al servicio que la valide. Si es correcta, devuelve un token.
-	token, err := authbackend.VerifyChallenge(idUsuario, input.Password, challenge)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Credenciales invalidas"})
-		return
-	}
-
-	// c.JSON serializa este mapa como JSON. 200 OK indica que el login terminó bien.
-	c.JSON(http.StatusOK, gin.H{
-		"mensaje": "Login exitoso",
-		"token":   token,
-	})
+	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
-func recuperarPassword(c *gin.Context) {
-	var input RecuperarPasswordInput
-	// Lee y valida que el cuerpo tenga la forma esperada; input.Correo es el correo recibido.
+func registro(c *gin.Context) {
+	var input RegistroInput
+	// Primero se comprueba que el cuerpo tenga un JSON válido con los campos
+	// que corresponden a RegistroInput.
 	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Se requiere un correo"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Datos de registro invalidos"})
 		return
 	}
-	// Esta respuesta también es provisional: aquí todavía no se envía un correo
-	// ni se crea un proceso real de recuperación.
-	c.JSON(http.StatusOK, gin.H{
-		// mensaje de correo de recuperacion
-		"mensaje": "Correo de recuperacion enviado",
+
+	// El servicio de autenticación realiza el registro y devuelve el ID nuevo.
+	userID, err := authbackend.Register(input.Nombre, input.Apellido, input.Correo, input.Password, input.Telefono)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No se pudo completar el registro"})
+		return
+	}
+
+	// StatusCreated (201) indica que el recurso, en este caso el usuario,
+	// fue creado correctamente.
+	c.JSON(http.StatusCreated, gin.H{
+		"user_id": userID,
+		"mensaje": "Usuario creado de manera exitosa",
 	})
 }
 
-// Esta ruta podría usarse al abrir la app para consultar si la sesión sigue activa.
-// Actualmente siempre contesta que sí y asigna un rol fijo; no valida una sesión real.
-func verificarSesion(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"valido": true,
-		"rol":    "Ciudadano",
-	})
-}
+func cambiarContrasenna(c *gin.Context) {
+	// El correo se obtiene de :correo en la ruta.
+	correo := c.Param("correo")
 
-func logout(c *gin.Context) {
-	// Por ahora solo confirma la acción. No invalida una sesión o token.
-	c.JSON(http.StatusOK, gin.H{
-		"mensaje": "Sesion cerrada de manera exitosa",
-	})
+	var input CambiarContrasenaInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Datos invalidos"})
+		return
+	}
+
+	// El token de autorización normalmente llega en el encabezado HTTP
+	// Authorization. El servicio de autenticación lo validará.
+	token := c.GetHeader("Authorization")
+	if token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Falta token de autenticacion"})
+		return
+	}
+
+	// Se reenvían el correo, la nueva contraseña y el token.
+	if err := authbackend.ChangePassword(correo, input.NuevaContrasena, token); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "No se pudo cambiar la contraseña"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"mensaje": "Contraseña actualizada correctamente"})
 }
 
 func main() {
-	// Primero intenta conectar a la base de datos. Si falla, panic detiene el proceso
-	// y muestra el error; así el servidor no arranca creyendo que puede usar la DB.
-	if err := db.Connect(); err != nil {
-		panic("No se pudo conectar a la base de datos: " + err.Error())
-	}
-
+	// gin.Default crea el enrutador e incluye middleware básico, como
+	// registro de solicitudes y recuperación ante errores inesperados.
 	router := gin.Default()
 
-	// Cada registro conecta un método HTTP y una ruta con su manejador.
-	// Por ejemplo, POST /login ejecuta login y GET /verificar-sesion ejecuta
-	// verificarSesion. POST suele enviar datos/acciones; GET suele consultar.
-	// router.POST("/registro", registro)
-	router.POST("/login", login)
-	router.POST("/recuperar-password", recuperarPassword)
-	router.GET("/verificar-sesion", verificarSesion)
-	router.POST("/logout", logout)
+	// Cada ruta conecta un método HTTP y una URL con la función que la atiende.
+	// :correo es un parámetro de ruta que se puede leer con c.Param("correo").
+	router.GET("/Login/:correo", loginChallenge)
+	router.POST("/Login/", loginVerify)
+	router.POST("/Registro/", registro)
+	router.PUT("/Contrasenna/:correo", cambiarContrasenna)
 
 	// Inicia el servidor HTTP. Sin argumentos, Gin escucha en el puerto 8080.
-	// Esta llamada bloquea aquí mientras el servidor está funcionando.
 	router.Run()
 }
