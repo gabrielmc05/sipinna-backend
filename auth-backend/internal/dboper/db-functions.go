@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"strconv"
 )
 
 func Probando(user_id uint32, newPassword string) {
@@ -28,12 +27,12 @@ func Probando(user_id uint32, newPassword string) {
 	if lastInsertID, err = result.LastInsertId(); err != nil {
 		err = fmt.Errorf("Error: in query: %s", err)
 		log.Print(err)
-		return 0, err
+		return
 	}
 	if rowsAffected, err = result.RowsAffected(); err != nil {
 		err = fmt.Errorf("Error: in query: %s", err)
 		log.Print(err)
-		return 0, err
+		return
 	}
 	log.Printf("Last Insert ID: %d, Rows Affected: %d", lastInsertID, rowsAffected)
 }
@@ -79,7 +78,7 @@ func GetUserIDWithEmail(email string) (user_id uint32, err error) {
 	return user_id, nil
 }
 
-func NewUser(email, password, name, surname string, phoneNumber ...string) (user_id uint32, err error) {
+func NewUser(email, password, name, surname string, phoneNumber *string) (user_id uint32, err error) {
 	var (
 		encryptedHash string
 		result        sql.Result
@@ -92,9 +91,9 @@ func NewUser(email, password, name, surname string, phoneNumber ...string) (user
 		return 0, err
 	}
 
-	if len(phoneNumber) > 0 {
+	if phoneNumber != nil {
 		result, err = db.Exec("INSERT INTO usuario(correo,hash_contrasenna,nombre,apellidos,telefono)VALUES(?,UNHEX(?),?,?,?)",
-			email, encryptedHash, name, surname, phoneNumber[0])
+			email, encryptedHash, name, surname, *phoneNumber)
 	} else {
 		result, err = db.Exec("INSERT INTO usuario(correo,hash_contrasenna,nombre,apellidos)VALUES(?,UNHEX(?),?,?)",
 			email, encryptedHash, name, surname)

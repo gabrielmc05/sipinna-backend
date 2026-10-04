@@ -4,7 +4,6 @@ import (
 	//"crypto/tls"
 	"encoding/base64"
 	"fmt"
-	"log"
 	"net/http"
 	"net/mail"
 	"time"
@@ -22,9 +21,9 @@ func init() {
 	dboper.Setup()
 	var router *gin.Engine = gin.Default()
 
-	router.GET("/auth/:email", AuthRequest)
-	router.POST("/auth/", Auth)
-	//router.POST("/register")
+	router.GET("/auth/:email", authRequest)
+	router.POST("/auth/", auth)
+	router.POST("/register", register)
 
 	gin.SetMode(gin.ReleaseMode)
 
@@ -40,7 +39,7 @@ func main() {
 	server.ListenAndServe()
 }
 
-func AuthRequest(c *gin.Context) {
+func authRequest(c *gin.Context) {
 	var (
 		email     string = c.Param("email")
 		user_id   uint32
@@ -84,7 +83,7 @@ type authJSON struct {
 	Response string `form:"response" json:"response" binding:"required"`
 }
 
-func Auth(c *gin.Context) {
+func auth(c *gin.Context) {
 	var (
 		json     authJSON
 		err      error
@@ -133,26 +132,48 @@ func Auth(c *gin.Context) {
 	c.String(http.StatusCreated, token)
 }
 
-//type registerJSON struct {
-//	Email        string `form:"email" json:"email" binding:"required"`
-//	Password     string `form:"password" json:"password" binding:"required"`
-//	Name         string `form:"name" json:"name" binding:"required"`
-//	Surname      string `form:"surname" json:"surname" binding:"required"`
-//	Phone_number string `form:"phone_number" json:"phone_number" binding:"required"`
-//}
-//
-//func Register(c *gin.Context) {
-//	var (
-//		json registerJSON
-//		err  error
-//	)
-//
-//	if err = c.ShouldBindJSON(&json); err != nil {
-//		c.Error(err)
-//		c.JSON(http.StatusBadRequest, gin.H{
-//			"error": fmt.Sprintf("Malformed request body: %s", err),
-//		})
-//		return
-//	}
-//
-//}
+type registerJSON struct {
+	Email        string  `form:"email" json:"email" binding:"required"`
+	Password     string  `form:"password" json:"password" binding:"required"`
+	Name         string  `form:"name" json:"name" binding:"required"`
+	Surname      string  `form:"surname" json:"surname" binding:"required"`
+	Phone_number *string `form:"phone_number" json:"phone_number"`
+}
+
+func register(c *gin.Context) {
+	var (
+		json    registerJSON
+		err     error
+		user_id uint32
+	)
+
+	if err = c.ShouldBindJSON(&json); err != nil {
+		c.Error(err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("Malformed request body: %s", err),
+		})
+		return
+	}
+
+	if _, err = mail.ParseAddress(json.Email); err != nil {
+		c.Error(err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid email address",
+		})
+		return
+	}
+
+	if user_id, err = dboper.NewUser(
+		json.Email, json.Password, json.Name, json.Surname, json.Phone_number); err != nil {
+		c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "New user created successfully.",
+		"user_id": user_id,
+	})
+}
