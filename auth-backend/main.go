@@ -4,6 +4,7 @@ import (
 	//"crypto/tls"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"net/http"
 	"net/mail"
 	"time"
@@ -108,15 +109,14 @@ func Auth(c *gin.Context) {
 	}
 	if len(response) != 32 {
 		c.JSON(http.StatusExpectationFailed, gin.H{
-			"message": "Response of wrong size.",
+			"error": "Response of wrong size.",
 		})
 		return
 	}
 
 	if _, err = authfuncs.Authenticate(json.User_id, [32]byte(response)); err != nil {
-		c.Error(err)
 		c.JSON(http.StatusExpectationFailed, gin.H{
-			"error": err.Error(),
+			"message": err.Error(),
 		})
 		return
 	}
@@ -133,14 +133,14 @@ func Auth(c *gin.Context) {
 	c.String(http.StatusCreated, token)
 }
 
-type registerJSON struct {
-	Email        string `form:"email" json:"email" binding:"required"`
-	Password     string `form:"password" json:"password" binding:"required"`
-	Name         string `form:"name" json:"name" binding:"required"`
-	Surname      string `form:"surname" json:"surname" binding:"required"`
-	Phone_number string `form:"phone_number" json:"phone_number" binding:"required"`
-}
-
+//type registerJSON struct {
+//	Email        string `form:"email" json:"email" binding:"required"`
+//	Password     string `form:"password" json:"password" binding:"required"`
+//	Name         string `form:"name" json:"name" binding:"required"`
+//	Surname      string `form:"surname" json:"surname" binding:"required"`
+//	Phone_number string `form:"phone_number" json:"phone_number" binding:"required"`
+//}
+//
 //func Register(c *gin.Context) {
 //	var (
 //		json registerJSON

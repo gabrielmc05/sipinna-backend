@@ -8,11 +8,9 @@ import (
 	"fmt"
 	"github.com/gabrielmc05/sipinna-backend/auth-backend/internal/keys"
 	"log"
-	"strconv"
-	"strings"
 )
 
-// EncryptHashUserPassword se utiliza para aplicarles el algoritmo Argon2id
+// EncryptHashUserPassword se utiliza para aplicarles el algoritmo sha256
 // y luego, encriptar las contraseñas con la llave simétrica de la base de
 // datos, se usa en el registro.
 func EncryptHashUserPassword(password string) (encryptedHash string, err error) {
@@ -50,7 +48,6 @@ func DecryptUserPasswordHash(encrypted []byte) (password string, err error) {
 
 func NewUserSignatureKey(user_id uint32) (key []byte, err error) {
 	var (
-		query        strings.Builder
 		result       sql.Result
 		lastInsertID int64
 		rowsAffected int64
@@ -63,26 +60,22 @@ func NewUserSignatureKey(user_id uint32) (key []byte, err error) {
 		return nil, err
 	}
 
-	llave_firma = hex.EncodeToString(key)
-	query.WriteString("INSERT INTO token(id_usuario,llave_firma)VALUES(")
-	query.WriteString(strconv.FormatUint(uint64(user_id), 10))
-	query.WriteString(",UNHEX('")
-	query.WriteString(llave_firma)
-	query.WriteString("'))ON DUPLICATE KEY UPDATE llave_firma=UNHEX('")
-	query.WriteString(llave_firma)
-	query.WriteString("');")
-
-	if result, err = db.Exec(query.String()); err != nil {
-		log.Printf("Error in query: %s", err)
+	if result, err = db.Exec(
+		"INSERT INTO token (id_usuario,llave_firma) VALUES (?,UNHEX(?)) ON DUPLICATE KEY UPDATE llave_firma=UNHEX(?)",
+		user_id, llave_firma); err != nil {
+		err = fmt.Errorf("Error: in query: %s", err)
+		log.Print(err)
 		return nil, err
 	}
 
 	if lastInsertID, err = result.LastInsertId(); err != nil {
-		log.Printf("Error in query: %s", err)
+		err = fmt.Errorf("Error: in query: %s", err)
+		log.Print(err)
 		return nil, err
 	}
 	if rowsAffected, err = result.RowsAffected(); err != nil {
-		log.Printf("Error in query: %s", err)
+		err = fmt.Errorf("Error: in query: %s", err)
+		log.Print(err)
 		return nil, err
 	}
 	log.Printf("Last Insert ID: %d, Rows Affected: %d", lastInsertID, rowsAffected)
