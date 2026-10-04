@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const MAX_CHAP_TIME time.Duration = time.Duration(300 * time.Second) // 5m0s
+const MAX_CHAP_TIME time.Duration = 300 * time.Second // 5m0s
 
 // Para iniciar un nuevo intento de autenticación
 type CHAP struct {
