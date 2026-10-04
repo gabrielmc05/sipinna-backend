@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const CHAPS_CLEANUP_TIME time.Duration = time.Duration(600 * time.Second) // 10m0s
+const CHAPS_CLEANUP_TIME time.Duration = 600 * time.Second // 10m0s
 
 var (
 	CHAPS      map[uint32]CHAP = make(map[uint32]CHAP)

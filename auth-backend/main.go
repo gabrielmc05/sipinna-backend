@@ -1,42 +1,64 @@
 package main
 
 import (
+	//"crypto/tls"
+	"encoding/base64"
+	"fmt"
+	"net/http"
+	"net/mail"
+	"time"
+
 	"github.com/gabrielmc05/sipinna-backend/auth-backend/internal/authfuncs"
 	"github.com/gabrielmc05/sipinna-backend/auth-backend/internal/dboper"
-	// "github.com/gabrielmc05/sipinna-backend/auth-backend/internal/keys"
 	"github.com/gin-gonic/gin"
-	"net/http"
-	//"reflect"
-	"encoding/base64"
-	"strconv"
+	// "github.com/gabrielmc05/sipinna-backend/auth-backend/internal/keys"
 )
 
-var r *gin.Engine
+var server *http.Server
 
+/* TODO: add TLS config */
 func init() {
 	dboper.Setup()
-	r = gin.Default()
+	var router *gin.Engine = gin.Default()
 
-	r.GET("/auth/:id", AuthRequest)
-	r.POST("/auth/", Auth)
+	router.GET("/auth/:email", AuthRequest)
+	router.POST("/auth/", Auth)
+	//router.POST("/register")
+
+	gin.SetMode(gin.ReleaseMode)
+
+	server = &http.Server{
+		Addr:         ":8081",
+		Handler:      router,
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+	}
 }
 
 func main() {
-	r.Run()
+	server.ListenAndServe()
 }
 
 func AuthRequest(c *gin.Context) {
 	var (
-		id        string = c.Param("id")
-		user_id   uint64
+		email     string = c.Param("email")
+		user_id   uint32
 		err       error
 		challenge []byte
 	)
 
-	if user_id, err = strconv.ParseUint(id, 10, 32); err != nil {
+	if _, err = mail.ParseAddress(email); err != nil {
 		c.Error(err)
 		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Malformed request (expected unsigned integer).",
+			"error": "Invalid email address",
+		})
+		return
+	}
+
+	if user_id, err = dboper.GetUserIDWithEmail(email); err != nil {
+		c.Error(err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("User with email address: %s not found.", email),
 		})
 		return
 	}
@@ -50,6 +72,7 @@ func AuthRequest(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusAccepted, gin.H{
+		"user_id":   user_id,
 		"message":   "Authentication attempt expected.",
 		"challenge": challenge,
 	})
@@ -69,18 +92,17 @@ func Auth(c *gin.Context) {
 	)
 
 	if err = c.ShouldBindJSON(&json); err != nil {
+		c.Error(err)
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
+			"error": fmt.Sprintf("Malformed request body: %s", err),
 		})
 		return
 	}
 
-	//response = make([]byte, base64.RawStdEncoding.DecodedLen(len(json.Response)))
-	//copy([]byte(json.Response), response)
 	if response, err = base64.StdEncoding.DecodeString(json.Response); err != nil {
 		c.Error(err)
 		c.JSON(http.StatusExpectationFailed, gin.H{
-			"error": err.Error(),
+			"error": fmt.Errorf("Error in JSON body: %s", err),
 		})
 		return
 	}
@@ -107,5 +129,30 @@ func Auth(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, token)
+	//c.JSON(http.StatusCreated, token)
+	c.String(http.StatusCreated, token)
 }
+
+type registerJSON struct {
+	Email        string `form:"email" json:"email" binding:"required"`
+	Password     string `form:"password" json:"password" binding:"required"`
+	Name         string `form:"name" json:"name" binding:"required"`
+	Surname      string `form:"surname" json:"surname" binding:"required"`
+	Phone_number string `form:"phone_number" json:"phone_number" binding:"required"`
+}
+
+//func Register(c *gin.Context) {
+//	var (
+//		json registerJSON
+//		err  error
+//	)
+//
+//	if err = c.ShouldBindJSON(&json); err != nil {
+//		c.Error(err)
+//		c.JSON(http.StatusBadRequest, gin.H{
+//			"error": fmt.Sprintf("Malformed request body: %s", err),
+//		})
+//		return
+//	}
+//
+//}

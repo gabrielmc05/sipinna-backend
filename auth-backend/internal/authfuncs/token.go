@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-const TOKEN_EXPIRATION_TIME time.Duration = time.Duration(24 * time.Hour) // 24h0m0s
+const TOKEN_EXPIRATION_TIME time.Duration = 24 * time.Hour // 24h0m0s
 
 func GenerateToken(user_id uint32) (string, error) {
 	var (
