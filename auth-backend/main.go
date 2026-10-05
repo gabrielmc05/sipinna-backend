@@ -26,6 +26,7 @@ func init() {
 	router.POST("/auth/", auth)
 	router.POST("/register", register)
 	router.PUT("/password/:email", password)
+	router.GET("/user/:email", user)
 
 	server = &http.Server{
 		Addr:         ":8081",
@@ -205,7 +206,7 @@ func password(c *gin.Context) {
 
 	if err = c.ShouldBindHeader(&header); err != nil {
 		c.Error(err)
-		c.Header("WWW-Authenticate", "lol")
+		c.Header("WWW-Authenticate", err.Error())
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "Authorization token expected.",
 		})
@@ -230,7 +231,7 @@ func password(c *gin.Context) {
 
 	if _, err = authfuncs.VerifyToken(header.JWT, user_id); err != nil {
 		c.Error(err)
-		c.Header("WWW-Authenticate", "lol")
+		c.Header("WWW-Authenticate", err.Error())
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"error": "Authorization token invalid.",
 		})
@@ -247,5 +248,63 @@ func password(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": fmt.Sprintf("Password changed for user with id: %d.", user_id),
+	})
+}
+
+func user(c *gin.Context) {
+	var (
+		header    authHeader
+		email     string = c.Param("email")
+		user_id   uint32
+		err       error
+		user_data dboper.UserData
+	)
+
+	if err = c.ShouldBindHeader(&header); err != nil {
+		c.Error(err)
+		c.Header("WWW-Authenticate", err.Error())
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Authorization token expected.",
+		})
+		return
+	}
+
+	if _, err = mail.ParseAddress(email); err != nil {
+		c.Error(err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid email address.",
+		})
+		return
+	}
+
+	if user_id, err = dboper.GetUserIDWithEmail(email); err != nil {
+		c.Error(err)
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": fmt.Sprintf("User with email address: %s not found.", email),
+		})
+		return
+	}
+
+	if _, err = authfuncs.VerifyToken(header.JWT, user_id); err != nil {
+		c.Error(err)
+		c.Header("WWW-Authenticate", err.Error())
+		c.JSON(http.StatusUnauthorized, gin.H{
+			"error": "Authorization token invalid.",
+		})
+		return
+	}
+
+	if user_data, err = dboper.GetUserData(user_id); err != nil {
+		c.Error(err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"name":         user_data.Name,
+		"surname":      user_data.Surname,
+		"phone_number": user_data.Phone_number,
 	})
 }
