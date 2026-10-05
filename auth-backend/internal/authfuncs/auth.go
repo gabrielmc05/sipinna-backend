@@ -1,7 +1,7 @@
 package authfuncs
 
 import (
-	"encoding/base64"
+	//"encoding/base64"
 	"fmt"
 	"github.com/gabrielmc05/sipinna-backend/auth-backend/internal/dboper"
 	"log"
