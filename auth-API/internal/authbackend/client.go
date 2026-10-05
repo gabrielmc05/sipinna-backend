@@ -75,18 +75,19 @@ func VerifyChallenge(userID uint32, responseBase64 string) (token string, err er
 		return "", fmt.Errorf("credenciales invalidas: %s", body)
 	}
 
-	var parsed struct {
-		Token string `json:"token"`
-	}
-	// Decodr JSON -> Go
-	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
-		return "", err
-	}
-
-	return parsed.Token, nil
+	// var parsed struct {
+	// 	Token string `json:"token"`
+	// }
+	// // Decodr JSON -> Go
+	// if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+	// 	return "", err
+	// }
+	tokenbytes, _:= io.ReadAll(resp.Body)
+	token = string(tokenbytes)	
+	return token, nil
 }
 
-// Register reenvía los datos de registro auth-backend es quien cifra y guarda la contraseña
+// Register reenvía los datos de registro, auth-backend es quien cifra y guarda la contraseña
 func Register(nombre, apellido, correo, password, telefono string) (userID uint32, err error) {
 
 	payload, err := json.Marshal(struct {
@@ -135,7 +136,7 @@ func ChangePassword(correo, nuevaContrasena, bearerToken string) error {
 		return err
 	}
 
-	// Además del cuerpo hay que agregar el encabezado Authorization con el token del cliente.
+	// Además del cuerpo hay que agregar el encabezado Authorization con el token del cliente
 	req, err := http.NewRequest(http.MethodPut,
 		fmt.Sprintf("%s/Contrasenna/%s", baseURL(), url.PathEscape(correo)),
 		bytes.NewReader(payload))

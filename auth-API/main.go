@@ -9,34 +9,23 @@ import (
 
 
 type LoginResponseInput struct {
-	UserID   uint32 `json:"user_id"`
-	Response string `json:"response"`
+	UserID   uint32 `json:"user_id" binding:"required"`
+	Response string `json:"response" binding:"required"`
 }
 
 type RegistroInput struct {
-	Nombre   string `json:"nombre"`
-	Apellido string `json:"apellido"`
-	Correo   string `json:"correo"`
-	Password string `json:"contraseña"`
+	Nombre   string `json:"nombre" binding:"required"`
+	Apellido string `json:"apellido" binding:"required"`
+	Correo   string `json:"correo" binding:"required"`
+	Password string `json:"contraseña" binding:"required"`
 	Telefono string `json:"numero_de_telefono"`
 }
 
 type CambiarContrasenaInput struct {
-	NuevaContrasena string `json:"nueva_contraseña"`
+	NuevaContrasena string `json:"nueva_contraseña" binding:"required"`
 }
 
 
-// func registro(c *gin.Context) {
-// 	var input RegistroInput
-// 	if err := c.ShouldBindJSON(&input); err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"error": "Datos de registro invalidos"})
-// 		return
-// 	}
-// 	c.JSON(http.StatusCreated, gin.H{
-// 		// mensaja de usuario creado de manera exitosa
-// 		"mensaje": "Usuario creado de manera exitosa",
-// 	})
-// }
 
 // primera funcion login encargada de recibir el correo y enviar el challenge al cliente
 func loginChallenge(c *gin.Context) {
@@ -76,6 +65,7 @@ func loginVerify(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
+// funcion que recibe los datos de registro y los envia al servicio de autenticacion para que ahí se cifre y guarde la contraseña
 func registro(c *gin.Context) {
 	var input RegistroInput
 	
@@ -97,6 +87,7 @@ func registro(c *gin.Context) {
 	})
 }
 
+// funcion para cambiar contraseña
 func cambiarContrasenna(c *gin.Context) {
 	
 	correo := c.Param("correo")
@@ -122,6 +113,10 @@ func cambiarContrasenna(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"mensaje": "Contraseña actualizada correctamente"})
 }
+
+
+
+
 
 func main() {
 	
