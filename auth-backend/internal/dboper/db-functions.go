@@ -6,23 +6,24 @@ import (
 	"log"
 )
 
-func GetUserPasswordHash(user_id uint32) (password string, err error) {
+func GetUserPasswordHash(user_id uint32) (passwordHash []byte, err error) {
 	var (
-		hash_contrasenna []byte
+		passwordHashString string
+		hash_contrasenna   []byte
 	)
 
 	if err = db.QueryRow("SELECT hash_contrasenna FROM usuario where id_usuario=?",
 		user_id).Scan(&hash_contrasenna); err != nil {
 		err = fmt.Errorf("Error: in query: %s", err)
 		log.Print(err)
-		return "", err
+		return nil, err
 	}
 
-	if password, err = DecryptUserPasswordHash(hash_contrasenna); err != nil {
+	if passwordHashString, err = DecryptUserPasswordHash(hash_contrasenna); err != nil {
 		log.Fatal(err)
 	}
 
-	return password, nil
+	return []byte(passwordHashString), nil
 }
 
 func GetUserSignatureKey(user_id uint32) (key []byte, err error) {

@@ -22,38 +22,48 @@ func init() {
 }
 
 func NewAuthTry(user_id uint32) (challenge []byte, err error) {
-	var passwordHash string
+	var (
+		chap         CHAP
+		passwordHash []byte
+	)
 
 	if passwordHash, err = dboper.GetUserPasswordHash(user_id); err != nil {
 		log.Printf("The new authentication attempt, by user with id: %d, has failed: %s", user_id, err)
 		return nil, err
 	}
 
-	var chap CHAP = NewCHAP(passwordHash)
+	if chap, err = NewCHAP(passwordHash); err != nil {
+		return nil, err
+	}
 
 	CHAPSMutex.Lock()
 	CHAPS[user_id] = chap
 	CHAPSMutex.Unlock()
 
-	return *chap.challenge, nil
+	//log.Printf("New authenticacion attempt by user with id: %d, expected: %s", user_id,
+	//	base64.StdEncoding.EncodeToString(chap.expected[:]))
+	return chap.challenge, nil
 }
 
 /* TESTING PURPOSES ONLY */
 //func NewAuthTry(user_id uint32) (expected []byte, challenge []byte, err error) {
-//	var passwordHash string
+//	var (
+//		passwordHash []byte
+//		chap         CHAP
+//	)
 //
 //	if passwordHash, err = dboper.GetUserPasswordHash(user_id); err != nil {
 //		log.Printf("The new authentication attempt, by user with id: %d, has failed: %s", user_id, err)
 //		return nil, nil, err
 //	}
 //
-//	var chap CHAP = NewCHAP(passwordHash)
+//	chap, err = NewCHAP(passwordHash)
 //
 //	CHAPSMutex.Lock()
 //	CHAPS[user_id] = chap
 //	CHAPSMutex.Unlock()
 //
-//	return chap.expected[:], *chap.challenge, nil
+//	return chap.expected[:], chap.challenge, nil
 //}
 
 func Authenticate(user_id uint32, response [32]byte) (ok bool, err error) {
