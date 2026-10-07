@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/mail"
+	"strconv"
 	"time"
 
 	"github.com/gabrielmc05/sipinna-backend/auth-backend/internal/authfuncs"
@@ -30,11 +31,13 @@ func init() {
 	router.SetTrustedProxies(trustedProxies)
 
 	router.GET("/auth/:email", authRequest)
-	router.POST("/auth/", auth)
+	router.POST("/auth", auth)
+	router.DELETE("/auth/:id", authDelete)
 	router.POST("/register", register)
-	router.PUT("/password/:email", password)
+	router.PATCH("/password/:email", password)
 	router.GET("/user/:email", user)
 	router.PATCH("/user/:email", userEdit)
+	router.PATCH("/email", email)
 
 	server = &http.Server{
 		Addr:         ":8081",
@@ -87,14 +90,17 @@ func authRequest(c *gin.Context) {
 	})
 }
 
-type authJSON struct {
-	User_id  uint32 `json:"user_id" binding:"required"`
-	Response string `json:"response" binding:"required"`
-}
+//type authJSON struct {
+//	User_id  uint32 `json:"user_id" binding:"required"`
+//	Response string `json:"response" binding:"required"`
+//}
 
 func auth(c *gin.Context) {
 	var (
-		json     authJSON
+		json struct {
+			User_id  uint32 `json:"user_id" binding:"required"`
+			Response string `json:"response" binding:"required"`
+		}
 		err      error
 		response []byte
 		token    string
@@ -141,17 +147,23 @@ func auth(c *gin.Context) {
 	c.String(http.StatusCreated, token)
 }
 
-type registerJSON struct {
-	Email        string  `json:"email" binding:"required"`
-	Password     string  `json:"password" binding:"required"`
-	Name         string  `json:"name" binding:"required"`
-	Surname      string  `json:"surname" binding:"required"`
-	Phone_number *string `json:"phone_number"`
-}
+//type registerJSON struct {
+//	Email        string  `json:"email" binding:"required"`
+//	Password     string  `json:"password" binding:"required"`
+//	Name         string  `json:"name" binding:"required"`
+//	Surname      string  `json:"surname" binding:"required"`
+//	Phone_number *string `json:"phone_number"`
+//}
 
 func register(c *gin.Context) {
 	var (
-		json    registerJSON
+		json struct {
+			Email        string  `json:"email" binding:"required"`
+			Password     string  `json:"password" binding:"required"`
+			Name         string  `json:"name" binding:"required"`
+			Surname      string  `json:"surname" binding:"required"`
+			Phone_number *string `json:"phone_number"`
+		}
 		err     error
 		user_id uint32
 	)
@@ -254,9 +266,7 @@ func password(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": fmt.Sprintf("Password changed for user with id: %d.", user_id),
-	})
+	c.Status(http.StatusNoContent)
 }
 
 func user(c *gin.Context) {
@@ -314,19 +324,24 @@ func user(c *gin.Context) {
 		"name":         user_data.Name,
 		"surname":      user_data.Surname,
 		"phone_number": user_data.Phone_number,
+		"user_id":      user_id,
 	})
 }
 
-type userJSON struct {
-	Name         *string `json:"name"`
-	Surname      *string `json:"surname"`
-	Phone_number *string `json:"phone_number"`
-}
+//type userJSON struct {
+//	Name         *string `json:"name"`
+//	Surname      *string `json:"surname"`
+//	Phone_number *string `json:"phone_number"`
+//}
 
 func userEdit(c *gin.Context) {
 	var (
-		header  authHeader
-		json    userJSON
+		header authHeader
+		json   struct {
+			Name         *string `json:"name"`
+			Surname      *string `json:"surname"`
+			Phone_number *string `json:"phone_number"`
+		}
 		email   string = c.Param("email")
 		user_id uint32
 		err     error
@@ -392,5 +407,108 @@ func userEdit(c *gin.Context) {
 		}
 	}
 
-	c.Status(http.StatusOK)
+	c.Status(http.StatusNoContent)
+}
+
+//type emailJSON struct {
+//	User_id   uint32 `json:"user_id" binding:"required"`
+//	New_email string `json:"new_email" binding:"required"`
+//}
+
+func email(c *gin.Context) {
+	var (
+		header authHeader
+		json   struct {
+			User_id   uint32 `json:"user_id" binding:"required"`
+			New_email string `json:"new_email" binding:"required"`
+		}
+		err error
+	)
+
+	if err = c.ShouldBindJSON(&json); err != nil {
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("Malformed request body: %s.", err),
+		})
+		return
+	}
+
+	if err = c.ShouldBindHeader(&header); err != nil {
+		c.Error(err)
+		c.Header("WWW-Authenticate", err.Error())
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error": "Authorization token expected.",
+		})
+		return
+	}
+
+	if _, err = authfuncs.VerifyToken(header.JWT, json.User_id); err != nil {
+		c.Error(err)
+		c.Header("WWW-Authenticate", err.Error())
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error": "Authorization token invalid.",
+		})
+		return
+	}
+
+	if _, err = mail.ParseAddress(json.New_email); err != nil {
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid new email address.",
+		})
+		return
+	}
+
+	if err = dboper.ChangeUserEmail(json.User_id, json.New_email); err != nil {
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
+}
+
+func authDelete(c *gin.Context) {
+	var (
+		header  authHeader
+		err     error
+		user_id uint64
+	)
+
+	if err = c.ShouldBindHeader(&header); err != nil {
+		c.Error(err)
+		c.Header("WWW-Authenticate", err.Error())
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error": "Authorization token expected.",
+		})
+		return
+	}
+
+	if user_id, err = strconv.ParseUint(c.Param("id"), 10, 32); err != nil {
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": "Malformed request parameter.",
+		})
+	}
+
+	if _, err = authfuncs.VerifyToken(header.JWT, uint32(user_id)); err != nil {
+		c.Error(err)
+		c.Header("WWW-Authenticate", err.Error())
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error": "Authorization token invalid.",
+		})
+		return
+	}
+
+	if err = dboper.DeleteUserSignatureKey(uint32(user_id)); err != nil {
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.Status(http.StatusNoContent)
 }
