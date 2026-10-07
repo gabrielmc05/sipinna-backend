@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 )
 
 func GetUserPasswordHash(user_id uint32) (passwordHash []byte, err error) {
@@ -123,10 +124,44 @@ func ChangeUserPassword(user_id uint32, newPassword string) (err error) {
 	return nil
 }
 
+func ChangeUserDatum(user_id uint32, field, newDatum string) (err error) {
+	var (
+		query        strings.Builder
+		result       sql.Result
+		lastInsertID int64
+		rowsAffected int64
+	)
+
+	query.WriteString("UPDATE usuario SET ")
+	query.WriteString(field)
+	query.WriteString("=? where id_usuario=?")
+
+	if result, err = db.Exec(query.String(),
+		newDatum, user_id); err != nil {
+		err = fmt.Errorf("Error: in query: %w", err)
+		log.Print(err)
+		return err
+	}
+
+	if lastInsertID, err = result.LastInsertId(); err != nil {
+		err = fmt.Errorf("Error: in query: %w", err)
+		log.Print(err)
+		return err
+	}
+	if rowsAffected, err = result.RowsAffected(); err != nil {
+		err = fmt.Errorf("Error: in query: %w", err)
+		log.Print(err)
+		return err
+	}
+	log.Printf("Last Insert ID: %d, Rows Affected: %d", lastInsertID, rowsAffected)
+
+	return nil
+}
+
 type UserData struct {
 	Name         string
 	Surname      string
-	Phone_number string
+	Phone_number *string
 }
 
 func GetUserData(user_id uint32) (user_data UserData, err error) {

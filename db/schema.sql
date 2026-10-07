@@ -248,3 +248,22 @@ CREATE TABLE `token` (
     FOREIGN KEY (`id_usuario`)
     REFERENCES `usuario` (`id_usuario`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+
+-- =========================================================
+-- 14. AUTH-BACKEND TRUSTED PROXIES
+-- =========================================================
+
+CREATE TABLE `TRUSTED_PROXIES` (
+  `IP_1` TINYINT NOT NULL,
+  `IP_2` TINYINT NOT NULL,
+  `IP_3` TINYINT NOT NULL,
+  `IP_4` TINYINT NOT NULL,
+  `IP` VARCHAR(15) AS ( CONCAT(
+  CAST(IP_1 AS VARCHAR(3)), '.',
+  CAST(IP_2 AS VARCHAR(3)), '.',
+  CAST(IP_3 AS VARCHAR(3)), '.',
+  CAST(IP_4 AS VARCHAR(3)))) VIRTUAL,
+  CONSTRAINT `PK_IP`
+    PRIMARY KEY (IP_1, IP_2, IP_3, IP_4)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+
