@@ -4,6 +4,7 @@ import (
 	//"crypto/tls"
 	"encoding/base64"
 	"fmt"
+	"log"
 	"net/http"
 	"net/mail"
 	"time"
@@ -22,10 +23,18 @@ func init() {
 	//gin.SetMode(gin.ReleaseMode)
 	var router *gin.Engine = gin.Default()
 
+	trustedProxies, err := dboper.GetTrustedProxies()
+	if err != nil {
+		log.Printf("Error at retrieving trusted proxies: %s", err)
+	}
+	router.SetTrustedProxies(trustedProxies)
+
 	router.GET("/auth/:email", authRequest)
 	router.POST("/auth/", auth)
 	router.POST("/register", register)
 	router.PUT("/password/:email", password)
+	router.GET("/user/:email", user)
+	router.PATCH("/user/:email", userEdit)
 
 	server = &http.Server{
 		Addr:         ":8081",
@@ -49,7 +58,7 @@ func authRequest(c *gin.Context) {
 
 	if _, err = mail.ParseAddress(email); err != nil {
 		c.Error(err)
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid email address.",
 		})
 		return
@@ -57,7 +66,7 @@ func authRequest(c *gin.Context) {
 
 	if user_id, err = dboper.GetUserIDWithEmail(email); err != nil {
 		c.Error(err)
-		c.JSON(http.StatusNotFound, gin.H{
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
 			"error": fmt.Sprintf("User with email address: %s not found.", email),
 		})
 		return
@@ -65,7 +74,7 @@ func authRequest(c *gin.Context) {
 
 	if challenge, err = authfuncs.NewAuthTry(uint32(user_id)); err != nil {
 		c.Error(err)
-		c.JSON(http.StatusNotFound, gin.H{
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
 			"error": err.Error(),
 		})
 		return
@@ -93,7 +102,7 @@ func auth(c *gin.Context) {
 
 	if err = c.ShouldBindJSON(&json); err != nil {
 		c.Error(err)
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"error": fmt.Sprintf("Malformed request body: %s.", err),
 		})
 		return
@@ -101,20 +110,20 @@ func auth(c *gin.Context) {
 
 	if response, err = base64.StdEncoding.DecodeString(json.Response); err != nil {
 		c.Error(err)
-		c.JSON(http.StatusExpectationFailed, gin.H{
+		c.AbortWithStatusJSON(http.StatusExpectationFailed, gin.H{
 			"error": fmt.Errorf("Error in JSON body: %s.", err),
 		})
 		return
 	}
 	if len(response) != 32 {
-		c.JSON(http.StatusExpectationFailed, gin.H{
+		c.AbortWithStatusJSON(http.StatusExpectationFailed, gin.H{
 			"error": "Response of wrong size.",
 		})
 		return
 	}
 
 	if _, err = authfuncs.Authenticate(json.User_id, [32]byte(response)); err != nil {
-		c.JSON(http.StatusExpectationFailed, gin.H{
+		c.AbortWithStatusJSON(http.StatusExpectationFailed, gin.H{
 			"error": err.Error(),
 		})
 		return
@@ -122,7 +131,7 @@ func auth(c *gin.Context) {
 
 	if token, err = authfuncs.GenerateToken(json.User_id); err != nil {
 		c.Error(err)
-		c.JSON(http.StatusExpectationFailed, gin.H{
+		c.AbortWithStatusJSON(http.StatusExpectationFailed, gin.H{
 			"error": err.Error(),
 		})
 		return
@@ -149,7 +158,7 @@ func register(c *gin.Context) {
 
 	if err = c.ShouldBindJSON(&json); err != nil {
 		c.Error(err)
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"error": fmt.Sprintf("Malformed request body: %s.", err),
 		})
 		return
@@ -157,7 +166,7 @@ func register(c *gin.Context) {
 
 	if _, err = mail.ParseAddress(json.Email); err != nil {
 		c.Error(err)
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid email address.",
 		})
 		return
@@ -166,7 +175,7 @@ func register(c *gin.Context) {
 	if user_id, err = dboper.NewUser(
 		json.Email, json.Password, json.Name, json.Surname, json.Phone_number); err != nil {
 		c.Error(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
 		return
@@ -197,7 +206,7 @@ func password(c *gin.Context) {
 
 	if err = c.ShouldBindJSON(&json); err != nil {
 		c.Error(err)
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"error": fmt.Sprintf("Malformed request body: %s.", err),
 		})
 		return
@@ -205,8 +214,8 @@ func password(c *gin.Context) {
 
 	if err = c.ShouldBindHeader(&header); err != nil {
 		c.Error(err)
-		c.Header("WWW-Authenticate", "lol")
-		c.JSON(http.StatusUnauthorized, gin.H{
+		c.Header("WWW-Authenticate", err.Error())
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 			"error": "Authorization token expected.",
 		})
 		return
@@ -214,7 +223,7 @@ func password(c *gin.Context) {
 
 	if _, err = mail.ParseAddress(email); err != nil {
 		c.Error(err)
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"error": "Invalid email address.",
 		})
 		return
@@ -222,7 +231,7 @@ func password(c *gin.Context) {
 
 	if user_id, err = dboper.GetUserIDWithEmail(email); err != nil {
 		c.Error(err)
-		c.JSON(http.StatusNotFound, gin.H{
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
 			"error": fmt.Sprintf("User with email address: %s not found.", email),
 		})
 		return
@@ -230,8 +239,8 @@ func password(c *gin.Context) {
 
 	if _, err = authfuncs.VerifyToken(header.JWT, user_id); err != nil {
 		c.Error(err)
-		c.Header("WWW-Authenticate", "lol")
-		c.JSON(http.StatusUnauthorized, gin.H{
+		c.Header("WWW-Authenticate", err.Error())
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 			"error": "Authorization token invalid.",
 		})
 		return
@@ -239,7 +248,7 @@ func password(c *gin.Context) {
 
 	if err = dboper.ChangeUserPassword(user_id, json.New_password); err != nil {
 		c.Error(err)
-		c.JSON(http.StatusInternalServerError, gin.H{
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
 		return
@@ -248,4 +257,140 @@ func password(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"message": fmt.Sprintf("Password changed for user with id: %d.", user_id),
 	})
+}
+
+func user(c *gin.Context) {
+	var (
+		header    authHeader
+		email     string = c.Param("email")
+		user_id   uint32
+		err       error
+		user_data dboper.UserData
+	)
+
+	if err = c.ShouldBindHeader(&header); err != nil {
+		c.Error(err)
+		c.Header("WWW-Authenticate", err.Error())
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error": "Authorization token expected.",
+		})
+		return
+	}
+
+	if _, err = mail.ParseAddress(email); err != nil {
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid email address.",
+		})
+		return
+	}
+
+	if user_id, err = dboper.GetUserIDWithEmail(email); err != nil {
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+			"error": fmt.Sprintf("User with email address: %s not found.", email),
+		})
+		return
+	}
+
+	if _, err = authfuncs.VerifyToken(header.JWT, user_id); err != nil {
+		c.Error(err)
+		c.Header("WWW-Authenticate", err.Error())
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error": "Authorization token invalid.",
+		})
+		return
+	}
+
+	if user_data, err = dboper.GetUserData(user_id); err != nil {
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"name":         user_data.Name,
+		"surname":      user_data.Surname,
+		"phone_number": user_data.Phone_number,
+	})
+}
+
+type userJSON struct {
+	Name         *string `json:"name"`
+	Surname      *string `json:"surname"`
+	Phone_number *string `json:"phone_number"`
+}
+
+func userEdit(c *gin.Context) {
+	var (
+		header  authHeader
+		json    userJSON
+		email   string = c.Param("email")
+		user_id uint32
+		err     error
+	)
+
+	if err = c.ShouldBindJSON(&json); err != nil {
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("Malformed request body: %s.", err),
+		})
+	}
+
+	if err = c.ShouldBindHeader(&header); err != nil {
+		c.Error(err)
+		c.Header("WWW-Authenticate", err.Error())
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error": "Authorization token expected.",
+		})
+		return
+	}
+
+	if _, err = mail.ParseAddress(email); err != nil {
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid email address.",
+		})
+		return
+	}
+
+	if user_id, err = dboper.GetUserIDWithEmail(email); err != nil {
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{
+			"error": fmt.Sprintf("User with email address: %s not found.", email),
+		})
+		return
+	}
+
+	if _, err = authfuncs.VerifyToken(header.JWT, user_id); err != nil {
+		c.Error(err)
+		c.Header("WWW-Authenticate", err.Error())
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error": "Authorization token invalid.",
+		})
+		return
+	}
+
+	if json.Name != nil {
+		if err = dboper.ChangeUserDatum(user_id, "nombre", *json.Name); err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err})
+			return
+		}
+	}
+	if json.Surname != nil {
+		if err = dboper.ChangeUserDatum(user_id, "apellidos", *json.Surname); err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err})
+			return
+		}
+	}
+	if json.Phone_number != nil {
+		if err = dboper.ChangeUserDatum(user_id, "telefono", *json.Phone_number); err != nil {
+			c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err})
+			return
+		}
+	}
+
+	c.Status(http.StatusOK)
 }

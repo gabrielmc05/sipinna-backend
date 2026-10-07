@@ -70,3 +70,7 @@ VALUES ('RPT0000001', @usuario_admin_id,
 -- Token
 INSERT INTO token (id_usuario, llave_firma)
 VALUES (3, CONVERT('12345' USING BINARY));
+
+-- Trusted proxies
+INSERT INTO TRUSTED_PROXIES (IP_1, IP_2, IP_3, IP_4)
+VALUES (127, 0, 0, 1);

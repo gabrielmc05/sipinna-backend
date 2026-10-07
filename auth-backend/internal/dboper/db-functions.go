@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 )
 
 func GetUserPasswordHash(user_id uint32) (passwordHash []byte, err error) {
@@ -14,7 +15,7 @@ func GetUserPasswordHash(user_id uint32) (passwordHash []byte, err error) {
 
 	if err = db.QueryRow("SELECT hash_contrasenna FROM usuario where id_usuario=?",
 		user_id).Scan(&hash_contrasenna); err != nil {
-		err = fmt.Errorf("Error: in query: %s", err)
+		err = fmt.Errorf("Error: in query: %w", err)
 		log.Print(err)
 		return nil, err
 	}
@@ -29,7 +30,7 @@ func GetUserPasswordHash(user_id uint32) (passwordHash []byte, err error) {
 func GetUserSignatureKey(user_id uint32) (key []byte, err error) {
 	if err = db.QueryRow("SELECT llave_firma FROM token where id_usuario=?",
 		user_id).Scan(&key); err != nil {
-		err = fmt.Errorf("Error: in query: %s", err)
+		err = fmt.Errorf("Error: in query: %w", err)
 		log.Print(err)
 		return nil, err
 	}
@@ -40,7 +41,7 @@ func GetUserSignatureKey(user_id uint32) (key []byte, err error) {
 func GetUserIDWithEmail(email string) (user_id uint32, err error) {
 	if err = db.QueryRow("SELECT id_usuario FROM usuario WHERE correo=?",
 		email).Scan(&user_id); err != nil {
-		err = fmt.Errorf("Error: in query: %s", err)
+		err = fmt.Errorf("Error: in query: %w", err)
 		log.Print(err)
 		return 0, err
 	}
@@ -57,7 +58,7 @@ func NewUser(email, password, name, surname string, phoneNumber *string) (user_i
 	)
 
 	if encryptedHash, err = EncryptHashUserPassword(password); err != nil {
-		log.Printf("Error at creating encrypting user's password hash: %s", err)
+		log.Printf("Error at creating encrypting user's password hash: %w", err)
 		return 0, err
 	}
 
@@ -70,18 +71,18 @@ func NewUser(email, password, name, surname string, phoneNumber *string) (user_i
 	}
 
 	if err != nil {
-		err = fmt.Errorf("Error: %s, inserting new user.", err)
+		err = fmt.Errorf("Error: %w, inserting new user.", err)
 		log.Print(err)
 		return 0, err
 	}
 
 	if lastInsertID, err = result.LastInsertId(); err != nil {
-		err = fmt.Errorf("Error: in query: %s", err)
+		err = fmt.Errorf("Error: in query: %w", err)
 		log.Print(err)
 		return 0, err
 	}
 	if rowsAffected, err = result.RowsAffected(); err != nil {
-		err = fmt.Errorf("Error: in query: %s", err)
+		err = fmt.Errorf("Error: in query: %w", err)
 		log.Print(err)
 		return 0, err
 	}
@@ -103,22 +104,73 @@ func ChangeUserPassword(user_id uint32, newPassword string) (err error) {
 
 	if result, err = db.Exec("UPDATE usuario SET hash_contrasenna=UNHEX(?) where id_usuario=?",
 		newPassword, user_id); err != nil {
-		err = fmt.Errorf("Error: in query: %s", err)
+		err = fmt.Errorf("Error: in query: %w", err)
 		log.Print(err)
 		return err
 	}
 
 	if lastInsertID, err = result.LastInsertId(); err != nil {
-		err = fmt.Errorf("Error: in query: %s", err)
+		err = fmt.Errorf("Error: in query: %w", err)
 		log.Print(err)
 		return err
 	}
 	if rowsAffected, err = result.RowsAffected(); err != nil {
-		err = fmt.Errorf("Error: in query: %s", err)
+		err = fmt.Errorf("Error: in query: %w", err)
 		log.Print(err)
 		return err
 	}
 	log.Printf("Last Insert ID: %d, Rows Affected: %d", lastInsertID, rowsAffected)
 
 	return nil
+}
+
+func ChangeUserDatum(user_id uint32, field, newDatum string) (err error) {
+	var (
+		query        strings.Builder
+		result       sql.Result
+		lastInsertID int64
+		rowsAffected int64
+	)
+
+	query.WriteString("UPDATE usuario SET ")
+	query.WriteString(field)
+	query.WriteString("=? where id_usuario=?")
+
+	if result, err = db.Exec(query.String(),
+		newDatum, user_id); err != nil {
+		err = fmt.Errorf("Error: in query: %w", err)
+		log.Print(err)
+		return err
+	}
+
+	if lastInsertID, err = result.LastInsertId(); err != nil {
+		err = fmt.Errorf("Error: in query: %w", err)
+		log.Print(err)
+		return err
+	}
+	if rowsAffected, err = result.RowsAffected(); err != nil {
+		err = fmt.Errorf("Error: in query: %w", err)
+		log.Print(err)
+		return err
+	}
+	log.Printf("Last Insert ID: %d, Rows Affected: %d", lastInsertID, rowsAffected)
+
+	return nil
+}
+
+type UserData struct {
+	Name         string
+	Surname      string
+	Phone_number *string
+}
+
+func GetUserData(user_id uint32) (user_data UserData, err error) {
+	if err = db.QueryRow("SELECT nombre, apellidos, telefono FROM usuario WHERE id_usuario=?",
+		user_id).Scan(&user_data.Name, &user_data.Surname, &user_data.Phone_number); err != nil {
+		err = fmt.Errorf("Error: in query: %w", err)
+		log.Print(err)
+		return UserData{}, err
+	}
+
+	return user_data, nil
 }

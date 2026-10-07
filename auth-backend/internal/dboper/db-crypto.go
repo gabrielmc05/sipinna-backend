@@ -21,7 +21,7 @@ func EncryptHashUserPassword(password string) (encryptedHash string, err error) 
 
 	nonce = make([]byte, keys.GetDBCipherGCM().NonceSize())
 	if _, err = rand.Read(nonce); err != nil {
-		log.Printf("Nonce (random 32 bytes) could not be generated: %s.", err)
+		log.Printf("Nonce (random 32 bytes) could not be generated: %w.", err)
 		return "", err
 	}
 
@@ -56,7 +56,7 @@ func NewUserSignatureKey(user_id uint32) (key []byte, err error) {
 
 	key = make([]byte, 32)
 	if _, err = rand.Read(key); err != nil {
-		log.Printf("Error at creating signature key for user with id %d: %s", user_id, err)
+		log.Printf("Error at creating signature key for user with id %d: %w", user_id, err)
 		return nil, err
 	}
 
@@ -64,22 +64,46 @@ func NewUserSignatureKey(user_id uint32) (key []byte, err error) {
 	if result, err = db.Exec(
 		"INSERT INTO token (id_usuario,llave_firma) VALUES (?,UNHEX(?)) ON DUPLICATE KEY UPDATE llave_firma=UNHEX(?)",
 		user_id, llave_firma, llave_firma); err != nil {
-		err = fmt.Errorf("Error: in query: %s", err)
+		err = fmt.Errorf("Error: in query: %w", err)
 		log.Print(err)
 		return nil, err
 	}
 
 	if lastInsertID, err = result.LastInsertId(); err != nil {
-		err = fmt.Errorf("Error: in query: %s", err)
+		err = fmt.Errorf("Error: in query: %w", err)
 		log.Print(err)
 		return nil, err
 	}
 	if rowsAffected, err = result.RowsAffected(); err != nil {
-		err = fmt.Errorf("Error: in query: %s", err)
+		err = fmt.Errorf("Error: in query: %w", err)
 		log.Print(err)
 		return nil, err
 	}
 	log.Printf("Last Insert ID: %d, Rows Affected: %d", lastInsertID, rowsAffected)
 
 	return key, nil
+}
+
+func GetTrustedProxies() (result []string, err error) {
+	var (
+		proxy string
+		rows  *sql.Rows
+	)
+
+	if rows, err = db.Query("SELECT IP FROM TRUSTED_PROXIES"); err != nil {
+		err = fmt.Errorf("Error at retrieving trusted proxies: %w", err)
+		log.Fatal(err)
+	}
+
+	for rows.Next() {
+		if err = rows.Scan(&proxy); err != nil {
+			return result, err
+		}
+		result = append(result, proxy)
+	}
+	if err = rows.Err(); err != nil {
+		return result, err
+	}
+
+	return result, nil
 }
