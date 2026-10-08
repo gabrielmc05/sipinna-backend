@@ -92,69 +92,42 @@ func NewUser(email, password, name, surname string, phoneNumber *string) (user_i
 }
 
 func ChangeUserPassword(user_id uint32, newPassword string) (err error) {
-	var (
-		result       sql.Result
-		lastInsertID int64
-		rowsAffected int64
-	)
-
 	if newPassword, err = EncryptHashUserPassword(newPassword); err != nil {
 		log.Println(err)
 	}
 
-	if result, err = db.Exec("UPDATE usuario SET hash_contrasenna=UNHEX(?) where id_usuario=?",
+	if _, err = db.Exec("UPDATE usuario SET hash_contrasenna=UNHEX(?) where id_usuario=?",
 		newPassword, user_id); err != nil {
 		err = fmt.Errorf("Error: in query: %w", err)
 		log.Print(err)
 		return err
 	}
+	return nil
+}
 
-	if lastInsertID, err = result.LastInsertId(); err != nil {
+func ChangeUserEmail(user_id uint32, newEmail string) (err error) {
+	if _, err = db.Exec("UPDATE usuario SET correo=? where id_usuario=?",
+		newEmail, user_id); err != nil {
 		err = fmt.Errorf("Error: in query: %w", err)
 		log.Print(err)
 		return err
 	}
-	if rowsAffected, err = result.RowsAffected(); err != nil {
-		err = fmt.Errorf("Error: in query: %w", err)
-		log.Print(err)
-		return err
-	}
-	log.Printf("Last Insert ID: %d, Rows Affected: %d", lastInsertID, rowsAffected)
-
 	return nil
 }
 
 func ChangeUserDatum(user_id uint32, field, newDatum string) (err error) {
-	var (
-		query        strings.Builder
-		result       sql.Result
-		lastInsertID int64
-		rowsAffected int64
-	)
+	var query strings.Builder
 
 	query.WriteString("UPDATE usuario SET ")
 	query.WriteString(field)
 	query.WriteString("=? where id_usuario=?")
 
-	if result, err = db.Exec(query.String(),
+	if _, err = db.Exec(query.String(),
 		newDatum, user_id); err != nil {
 		err = fmt.Errorf("Error: in query: %w", err)
 		log.Print(err)
 		return err
 	}
-
-	if lastInsertID, err = result.LastInsertId(); err != nil {
-		err = fmt.Errorf("Error: in query: %w", err)
-		log.Print(err)
-		return err
-	}
-	if rowsAffected, err = result.RowsAffected(); err != nil {
-		err = fmt.Errorf("Error: in query: %w", err)
-		log.Print(err)
-		return err
-	}
-	log.Printf("Last Insert ID: %d, Rows Affected: %d", lastInsertID, rowsAffected)
-
 	return nil
 }
 
@@ -171,6 +144,15 @@ func GetUserData(user_id uint32) (user_data UserData, err error) {
 		log.Print(err)
 		return UserData{}, err
 	}
-
 	return user_data, nil
+}
+
+func DeleteUserSignatureKey(user_id uint32) (err error) {
+	if _, err = db.Exec("UPDATE token SET llave_firma=NULL where id_usuario=?",
+		user_id); err != nil {
+		err = fmt.Errorf("Error: in query: %w", err)
+		log.Print(err)
+		return err
+	}
+	return nil
 }
