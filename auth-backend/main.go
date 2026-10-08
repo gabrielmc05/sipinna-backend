@@ -30,10 +30,10 @@ func init() {
 	}
 	router.SetTrustedProxies(trustedProxies)
 
-	router.GET("/auth/:email", authRequest)
+	router.GET("/auth/:email", authRequest) 
 	router.POST("/auth", auth)
 	router.DELETE("/auth/:id", authDelete)
-	router.POST("/register", register)
+	router.POST("/register", register) // listo
 	router.PATCH("/password/:email", password)
 	router.GET("/user/:email", user)
 	router.PATCH("/user/:email", userEdit)
@@ -120,7 +120,7 @@ func auth(c *gin.Context) {
 			"error": fmt.Errorf("Error in JSON body: %s.", err),
 		})
 		return
-	}
+	} 
 	if len(response) != 32 {
 		c.AbortWithStatusJSON(http.StatusExpectationFailed, gin.H{
 			"error": "Response of wrong size.",
