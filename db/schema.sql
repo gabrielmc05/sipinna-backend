@@ -23,6 +23,7 @@ CREATE TABLE `usuario` (
   `telefono` varchar(30) DEFAULT NULL,
   `fecha_registro` timestamp NOT NULL DEFAULT current_timestamp(),
   `es_activo` tinyint(1) NOT NULL DEFAULT 1,
+  `nombre_completo` varchar(130) AS ( CONCAT(`nombre`, ' ', `apellidos`) ) VIRTUAL,
   PRIMARY KEY (`id_usuario`),
   UNIQUE KEY `correo` (`correo`)
 ) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
