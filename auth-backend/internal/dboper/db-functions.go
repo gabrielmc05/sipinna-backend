@@ -49,6 +49,26 @@ func GetUserIDWithEmail(email string) (user_id uint32, err error) {
 	return user_id, nil
 }
 
+func UserExists(user_id uint32) (ok bool, err error) {
+	if err = db.QueryRow("SELECT ExisteUsuario(?)", user_id).Scan(&ok); err != nil {
+		return false, err
+	}
+	return ok, nil
+}
+
+func UserIsAdmin(user_id uint32) (ok bool, err error) {
+	if ok, err = UserExists(user_id); err != nil {
+		return false, err
+	}
+	if !ok {
+		return false, fmt.Errorf("User doesn't exist.")
+	}
+	if err = db.QueryRow("SELECT EsAdministrador(?)", user_id).Scan(&ok); err != nil {
+		return false, err
+	}
+	return ok, nil
+}
+
 func NewUser(email, password, name, surname string, phoneNumber *string) (user_id uint32, err error) {
 	var (
 		encryptedHash string
@@ -62,12 +82,12 @@ func NewUser(email, password, name, surname string, phoneNumber *string) (user_i
 		return 0, err
 	}
 
-	if phoneNumber != nil {
-		result, err = db.Exec("INSERT INTO usuario(correo,hash_contrasenna,nombre,apellidos,telefono)VALUES(?,UNHEX(?),?,?,?)",
-			email, encryptedHash, name, surname, *phoneNumber)
-	} else {
-		result, err = db.Exec("INSERT INTO usuario(correo,hash_contrasenna,nombre,apellidos)VALUES(?,UNHEX(?),?,?)",
-			email, encryptedHash, name, surname)
+	if result, err = db.Exec(
+		"INSERT INTO usuario(correo,hash_contrasenna,nombre,apellidos,telefono)VALUES(?,UNHEX(?),?,?,?)",
+		email, encryptedHash, name, surname, *phoneNumber); err != nil {
+		err = fmt.Errorf("Error: %w, inserting new user.", err)
+		log.Print(err)
+		return 0, err
 	}
 
 	if err != nil {
@@ -89,6 +109,54 @@ func NewUser(email, password, name, surname string, phoneNumber *string) (user_i
 	log.Printf("Last Insert ID: %d, Rows Affected: %d", lastInsertID, rowsAffected)
 
 	return uint32(lastInsertID), nil
+}
+
+type Role uint8
+
+const (
+	Administrator Role = 0
+	Feeder        Role = 1
+)
+
+type Admin struct {
+	Email         string
+	Password      string
+	Name          string
+	Surname       string
+	PhoneNumber   *string
+	InstitutionId uint32
+	Role          Role
+}
+
+func NewAdmin(admin *Admin) (user_id uint32, user_name string, err error) {
+	var (
+		encryptedHash string
+		query         string
+	)
+
+	if encryptedHash, err = EncryptHashUserPassword(admin.Password); err != nil {
+		log.Printf("Error at creating encrypting user's password hash: %w", err)
+		return 0, "", err
+	}
+
+	switch admin.Role {
+	case Administrator:
+		query = "CALL RegistrarAdministrador(?,?,?,?,?,?)"
+	case Feeder:
+		query = "CALL RegistrarAlimentador(?,?,?,?,?,?)"
+	default:
+		return 0, "", fmt.Errorf("Invalid role, expected values: 'Administrator', 'Feeder'.")
+	}
+
+	if err = db.QueryRow(query,
+		admin.Email, encryptedHash, admin.Name, admin.Surname, admin.PhoneNumber, admin.InstitutionId,
+	).Scan(&user_id, &user_name); err != nil {
+		err = fmt.Errorf("Error: %w, inserting new admin.", err)
+		log.Print(err)
+		return 0, "", err
+	}
+
+	return user_id, user_name, nil
 }
 
 func ChangeUserPassword(user_id uint32, newPassword string) (err error) {
