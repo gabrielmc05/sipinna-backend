@@ -38,6 +38,8 @@ func init() {
 	router.GET("/user/:email", user)
 	router.PATCH("/user/:email", userEdit)
 	router.PATCH("/email", email)
+	router.POST("/register/admin/:id", registerAdmin)
+	//router.POST("/register/feeder", registerFeeders)
 
 	server = &http.Server{
 		Addr:         ":8081",
@@ -90,16 +92,11 @@ func authRequest(c *gin.Context) {
 	})
 }
 
-//type authJSON struct {
-//	User_id  uint32 `json:"user_id" binding:"required"`
-//	Response string `json:"response" binding:"required"`
-//}
-
 func auth(c *gin.Context) {
 	var (
 		json struct {
 			User_id  uint32 `json:"user_id" binding:"required"`
-			Response string `json:"response" binding:"required"`
+			Response string `json:"response" binding:"required,base64"`
 		}
 		err      error
 		response []byte
@@ -147,23 +144,17 @@ func auth(c *gin.Context) {
 	c.String(http.StatusCreated, token)
 }
 
-//type registerJSON struct {
-//	Email        string  `json:"email" binding:"required"`
-//	Password     string  `json:"password" binding:"required"`
-//	Name         string  `json:"name" binding:"required"`
-//	Surname      string  `json:"surname" binding:"required"`
-//	Phone_number *string `json:"phone_number"`
-//}
+type registerJSON struct {
+	Email        string  `json:"email" binding:"required,email"`
+	Password     string  `json:"password" binding:"required"`
+	Name         string  `json:"name" binding:"required"`
+	Surname      string  `json:"surname" binding:"required"`
+	Phone_number *string `json:"phone_number" binding:"e164"`
+}
 
 func register(c *gin.Context) {
 	var (
-		json struct {
-			Email        string  `json:"email" binding:"required"`
-			Password     string  `json:"password" binding:"required"`
-			Name         string  `json:"name" binding:"required"`
-			Surname      string  `json:"surname" binding:"required"`
-			Phone_number *string `json:"phone_number"`
-		}
+		json    registerJSON
 		err     error
 		user_id uint32
 	)
@@ -172,14 +163,6 @@ func register(c *gin.Context) {
 		c.Error(err)
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"error": fmt.Sprintf("Malformed request body: %s.", err),
-		})
-		return
-	}
-
-	if _, err = mail.ParseAddress(json.Email); err != nil {
-		c.Error(err)
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid email address.",
 		})
 		return
 	}
@@ -203,15 +186,13 @@ type authHeader struct {
 	JWT string `header:"Authorization" binding:"required"`
 }
 
-type passwordJSON struct {
-	New_password string `json:"new_password" binding:"required"`
-}
-
 func password(c *gin.Context) {
 	var (
-		header  authHeader
-		email   string = c.Param("email")
-		json    passwordJSON
+		header authHeader
+		email  string = c.Param("email")
+		json   struct {
+			New_password string `json:"new_password" binding:"required"`
+		}
 		err     error
 		user_id uint32
 	)
@@ -328,12 +309,6 @@ func user(c *gin.Context) {
 	})
 }
 
-//type userJSON struct {
-//	Name         *string `json:"name"`
-//	Surname      *string `json:"surname"`
-//	Phone_number *string `json:"phone_number"`
-//}
-
 func userEdit(c *gin.Context) {
 	var (
 		header authHeader
@@ -410,17 +385,12 @@ func userEdit(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-//type emailJSON struct {
-//	User_id   uint32 `json:"user_id" binding:"required"`
-//	New_email string `json:"new_email" binding:"required"`
-//}
-
 func email(c *gin.Context) {
 	var (
 		header authHeader
 		json   struct {
 			User_id   uint32 `json:"user_id" binding:"required"`
-			New_email string `json:"new_email" binding:"required"`
+			New_email string `json:"new_email" binding:"required,email"`
 		}
 		err error
 	)
@@ -447,14 +417,6 @@ func email(c *gin.Context) {
 		c.Header("WWW-Authenticate", err.Error())
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 			"error": "Authorization token invalid.",
-		})
-		return
-	}
-
-	if _, err = mail.ParseAddress(json.New_email); err != nil {
-		c.Error(err)
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-			"error": "Invalid new email address.",
 		})
 		return
 	}
@@ -491,6 +453,7 @@ func authDelete(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 			"error": "Malformed request parameter.",
 		})
+		return
 	}
 
 	if _, err = authfuncs.VerifyToken(header.JWT, uint32(user_id)); err != nil {
@@ -512,3 +475,181 @@ func authDelete(c *gin.Context) {
 
 	c.Status(http.StatusNoContent)
 }
+
+func registerAdmin(c *gin.Context) {
+	var (
+		header authHeader
+		json   struct {
+			Institution_id uint32       `json:"institution_id" binding:"required"`
+			New_admin      registerJSON `json:"new_admin" binding:"required"`
+		}
+		err         error
+		user_id     uint32
+		admin_id    uint64
+		user_name   string
+		userIsAdmin bool
+		newAdmin    dboper.Admin
+	)
+
+	if err = c.ShouldBindJSON(&json); err != nil {
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("Malformed request body: %s.", err),
+		})
+		return
+	}
+
+	if err = c.ShouldBindHeader(&header); err != nil {
+		c.Error(err)
+		c.Header("WWW-Authenticate", err.Error())
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error": "Authorization token expected.",
+		})
+		return
+	}
+
+	if admin_id, err = strconv.ParseUint(c.Param("id"), 10, 32); err != nil {
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": "Malformed request parameter.",
+		})
+		return
+	}
+
+	if userIsAdmin, err = dboper.UserIsAdmin(uint32(admin_id)); err != nil {
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	if !userIsAdmin {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error": fmt.Sprintf("User with id %d, is not admin.", admin_id),
+		})
+		return
+	}
+
+	if _, err = authfuncs.VerifyToken(header.JWT, uint32(admin_id)); err != nil {
+		c.Error(err)
+		c.Header("WWW-Authenticate", err.Error())
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error": "Authorization token invalid.",
+		})
+		return
+	}
+
+	newAdmin = dboper.Admin{
+		Email:         json.New_admin.Email,
+		Password:      json.New_admin.Password,
+		Name:          json.New_admin.Name,
+		Surname:       json.New_admin.Surname,
+		PhoneNumber:   json.New_admin.Phone_number,
+		InstitutionId: json.Institution_id,
+		Role:          dboper.Administrator,
+	}
+
+	if user_id, user_name, err = dboper.NewAdmin(&newAdmin); err != nil {
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message":   "New administrator created successfully.",
+		"user_id":   user_id,
+		"user_name": user_name,
+	})
+}
+
+//func registerFeeders(c *gin.Context) {
+//	var (
+//		header authHeader
+//		json   struct {
+//			Institution_id uint32         `json:"institution_id" binding:"required"`
+//			New_admin      []registerJSON `json:"new_feeders" binding:"required"`
+//		}
+//		err         error
+//		user_id     uint32
+//		admin_id    uint64
+//		user_name   string
+//		userIsAdmin bool
+//		newAdmin    dboper.Admin
+//	)
+//
+//	if err = c.ShouldBindJSON(&json); err != nil {
+//		c.Error(err)
+//		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+//			"error": fmt.Sprintf("Malformed request body: %s.", err),
+//		})
+//		return
+//	}
+//
+//	if err = c.ShouldBindHeader(&header); err != nil {
+//		c.Error(err)
+//		c.Header("WWW-Authenticate", err.Error())
+//		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+//			"error": "Authorization token expected.",
+//		})
+//		return
+//	}
+//
+//	if admin_id, err = strconv.ParseUint(c.Param("id"), 10, 32); err != nil {
+//		c.Error(err)
+//		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+//			"error": "Malformed request parameter.",
+//		})
+//		return
+//	}
+//
+//	if userIsAdmin, err = dboper.UserIsAdmin(uint32(admin_id)); err != nil {
+//		c.Error(err)
+//		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+//			"error": err.Error(),
+//		})
+//		return
+//	}
+//
+//	if !userIsAdmin {
+//		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+//			"error": fmt.Sprintf("User with id %d, is not admin.", admin_id),
+//		})
+//		return
+//	}
+//
+//	if _, err = authfuncs.VerifyToken(header.JWT, uint32(admin_id)); err != nil {
+//		c.Error(err)
+//		c.Header("WWW-Authenticate", err.Error())
+//		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+//			"error": "Authorization token invalid.",
+//		})
+//		return
+//	}
+//
+//	newAdmin = dboper.Admin{
+//		Email:         json.New_admin.Email,
+//		Password:      json.New_admin.Password,
+//		Name:          json.New_admin.Name,
+//		Surname:       json.New_admin.Surname,
+//		PhoneNumber:   json.New_admin.Phone_number,
+//		InstitutionId: json.Institution_id,
+//		Role:          dboper.Administrator,
+//	}
+//
+//	if user_id, user_name, err = dboper.NewAdmin(&newAdmin); err != nil {
+//		c.Error(err)
+//		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+//			"error": err.Error(),
+//		})
+//		return
+//	}
+//
+//	c.JSON(http.StatusCreated, gin.H{
+//		"message":   "New administrator created successfully.",
+//		"user_id":   user_id,
+//		"user_name": user_name,
+//	})
+//}

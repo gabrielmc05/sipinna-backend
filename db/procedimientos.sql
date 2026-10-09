@@ -1,6 +1,8 @@
 -- DROPS
 DROP PROCEDURE IF EXISTS RegistrarAdministrador;
 DROP PROCEDURE IF EXISTS RegistrarAlimentador;
+DROP FUNCTION IF EXISTS EsAdministrador;
+DROP FUNCTION IF EXISTS ExisteUsuario;
 
 -- Procedimientos y funciones
 DELIMITER //
@@ -91,4 +93,22 @@ SELECT id_usuario, nombre_completo FROM usuario WHERE id_usuario = p_id_usuario;
 	
 END
 //
+DELIMITER ;
+
+DELIMITER //
+CREATE FUNCTION EsAdministrador(f_id_usuario INT(11))
+RETURNS BOOL
+BEGIN
+    RETURN EXISTS ( 
+	       SELECT 1 FROM administrador WHERE id_usuario = f_id_usuario);
+END; //
+DELIMITER ;
+
+DELIMITER //
+CREATE FUNCTION ExisteUsuario(f_id_usuario INT(11))
+RETURNS BOOL
+BEGIN
+    RETURN EXISTS ( 
+		SELECT 1 FROM usuario WHERE id_usuario = f_id_usuario);
+END; //
 DELIMITER ;
