@@ -155,6 +155,7 @@ func logout(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+	c.JSON(http.StatusOK, gin.H{"mensaje" : "Sesión cerrada :)"})
 }
 
 // consultar los datos del usuario (solo con el token del propio usuario)
@@ -194,6 +195,7 @@ func editarUsuario(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+	c.JSON(http.StatusOK, gin.H{"mensaje": "Usuario actualizado correctamente"})
 }
 
 // cambiar el correo del usuario
@@ -208,21 +210,22 @@ func cambiarCorreo(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
+	c.JSON(http.StatusOK, gin.H{"mensaje": "Correo actualizado correctamente"})
 }
 
 func main() {
 
 	router := gin.Default()
 
-	router.GET("/Login/:correo", loginChallenge)                                //listo
-	router.POST("/Login/", loginVerify)                                         // listo
-	router.POST("/Registro/", registro)                                         // listo
+	router.GET("/Login/:correo", loginChallenge)  //listo
+	router.POST("/Login/", loginVerify)  // listo
+	router.POST("/Registro/", registro)   // listo
 	router.PATCH("/Contrasenna/:correo", requireAuthHeader, cambiarContrasenna) //listo
 
-	router.DELETE("/Login/:id", requireAuthHeader, logout)
-	router.GET("/Usuario/:correo", requireAuthHeader, getUsuario)
-	router.PATCH("/Usuario/:correo", requireAuthHeader, editarUsuario)
-	router.PATCH("/Correo/", requireAuthHeader, cambiarCorreo)
+	router.DELETE("/Login/:id", requireAuthHeader, logout) // listo
+	router.GET("/Usuario/:correo", requireAuthHeader, getUsuario) // listo
+	router.PATCH("/Usuario/:correo", requireAuthHeader, editarUsuario) //listo
+	router.PATCH("/Correo/", requireAuthHeader, cambiarCorreo) //listo 
 
 	router.Run()
 }
