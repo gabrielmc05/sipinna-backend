@@ -8,6 +8,7 @@ DROP PROCEDURE IF EXISTS ListarReportesUsuario;
 DROP PROCEDURE IF EXISTS ActualizarEstadoReporte;
 DROP FUNCTION IF EXISTS EsAdministrador;
 DROP FUNCTION IF EXISTS ExisteUsuario;
+DROP PROCEDURE IF EXISTS ConsultarFolio; 
 
 -- Procedimientos y funciones
 DELIMITER //
@@ -231,6 +232,44 @@ BEGIN
 		SET v_indice = v_indice + 1;
 	END WHILE;
 	COMMIT;
+END
+//
+DELIMITER ;
+
+DELIMITER // 
+CREATE PROCEDURE ConsultarFolio (
+	IN p_folio CHAR(15),
+	IN p_id_usuario INT(11)
+)
+BEGIN
+	IF NOT EXISTS (SELECT 1 FROM reporte WHERE folio = p_folio)
+	THEN
+		SIGNAL SQLSTATE '45000'
+		SET MESSAGE_TEXT = 'No existen reportes con ese folio';
+	END IF;
+	
+	IF NOT EXISTS (
+		SELECT 1 FROM reporte
+		WHERE folio = p_folio
+		AND id_usuario = p_id_usuario)
+	AND NOT EXISTS (
+		SELECT 1 FROM administrador 
+			WHERE id_usuario = p_id_usuario
+			AND rol = 'Administrador')
+	AND NOT EXISTS (
+		SELECT 1 FROM expediente
+			WHERE folio = p_folio
+			AND id_usuario = p_id_usuario)
+	THEN
+		SIGNAL SQLSTATE '45000'
+		SET MESSAGE_TEXT = 'Usuario no autorizado';
+	END IF;
+	
+	SELECT r.folio, e.estado, r.fecha_reporte, r.descripcion, COALESCE(u.direccion_texto, '')
+	FROM reporte AS r
+	INNER JOIN expediente AS e ON e.folio = r.folio
+	INNER JOIN ubicacion AS u ON u.folio = r.folio
+	WHERE r.folio = p_folio;
 END
 //
 DELIMITER ;

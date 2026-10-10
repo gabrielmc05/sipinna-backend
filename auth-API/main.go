@@ -94,13 +94,17 @@ func loginVerify(c *gin.Context) {
 	}
 
 	// El cliente calcula la respuesta al reto, aquí se envía al servicio de autenticación para validarla y obtener un token.
-	token, err := authbackend.VerifyChallenge(input.UserID, input.Response)
+	token, rol, err := authbackend.VerifyChallenge(input.UserID, input.Response)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Credenciales invalidas"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"token": token})
+	//c.JSON(http.StatusOK, gin.H{"token": token})
+	c.JSON(http.StatusOK, gin.H{
+		"token": token,
+		"rol":   rol,
+	})
 }
 
 // funcion que recibe los datos de registro y los envia al servicio de autenticacion para que ahí se cifre y guarde la contraseña
@@ -264,11 +268,11 @@ func main() {
 	router.POST("/Registro/", registro)                                         // listo
 	router.PATCH("/Contrasenna/:correo", requireAuthHeader, cambiarContrasenna) //listo
 
-	router.DELETE("/Login/:id", requireAuthHeader, logout)             // listo
-	router.GET("/Usuario/:correo", requireAuthHeader, getUsuario)      // listo
-	router.PATCH("/Usuario/:correo", requireAuthHeader, editarUsuario) //listo
-	router.PATCH("/Correo/", requireAuthHeader, cambiarCorreo)         //listo
-	router.POST("/Registrar/Admin/:id", requireAuthHeader, registrarAdmin)  //listo
+	router.DELETE("/Login/:id", requireAuthHeader, logout)                             // listo
+	router.GET("/Usuario/:correo", requireAuthHeader, getUsuario)                      // listo
+	router.PATCH("/Usuario/:correo", requireAuthHeader, editarUsuario)                 //listo
+	router.PATCH("/Correo/", requireAuthHeader, cambiarCorreo)                         //listo
+	router.POST("/Registrar/Admin/:id", requireAuthHeader, registrarAdmin)             //listo
 	router.POST("/Registrar/Alimentador/:id", requireAuthHeader, registrarAlimentador) //listo
 
 	router.Run()

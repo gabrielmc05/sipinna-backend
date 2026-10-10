@@ -19,7 +19,9 @@ var server *http.Server
 
 /* TODO: configure properly TLS */
 func init() {
-	dboper.Setup()
+	if err := dboper.Setup(); err != nil {
+		log.Fatalf("Error al conectarse a la base de datos: %s.", err)
+	}
 	//gin.SetMode(gin.ReleaseMode)
 	var router *gin.Engine = gin.Default()
 
@@ -29,7 +31,7 @@ func init() {
 	}
 	router.SetTrustedProxies(trustedProxies)
 
-	router.GET("/auth/:email", authRequest) 
+	router.GET("/auth/:email", authRequest)
 	router.POST("/auth", auth)
 	router.DELETE("/auth/:id", authDelete)
 	router.POST("/register", register) // listo
@@ -52,7 +54,13 @@ func init() {
 }
 
 func main() {
-	server.ListenAndServe()
+	defer dboper.CloseDB()
+
+	log.Println("Iniciando Auth Backend en el puerto 8081…")
+
+	if err := server.ListenAndServe(); err != nil {
+		log.Fatalf("Error al iniciar el servidor: %s.", err)
+	}
 }
 
 func authRequest(c *gin.Context) {
@@ -119,7 +127,7 @@ func auth(c *gin.Context) {
 			"error": fmt.Errorf("Error in JSON body: %s.", err),
 		})
 		return
-	} 
+	}
 	if len(response) != 32 {
 		c.AbortWithStatusJSON(http.StatusExpectationFailed, gin.H{
 			"error": "Response of wrong size.",
@@ -142,8 +150,18 @@ func auth(c *gin.Context) {
 		return
 	}
 
-	//c.JSON(http.StatusCreated, token)
-	c.String(http.StatusCreated, token)
+	if role, err := dboper.GetUserRole(json.User_id); err != nil {
+		c.JSON(http.StatusCreated, gin.H{
+			"token": token,
+		})
+	} else {
+		c.JSON(http.StatusCreated, gin.H{
+			"token": token,
+			"role":  role,
+		})
+	}
+
+	//c.String(http.StatusCreated, token)
 }
 
 type registerJSON struct {
@@ -477,7 +495,6 @@ func authDelete(c *gin.Context) {
 
 	c.Status(http.StatusNoContent)
 }
-
 
 func registerAdmin(c *gin.Context) {
 	var (

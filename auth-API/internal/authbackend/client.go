@@ -105,36 +105,47 @@ func RequestChallenge(correo string) (*ChallengeResponse, error) {
 
 // VerifyChallenge envía al servicio la respuesta que ya calculó el cliente.
 // Si es válida devuelve el JWT.
-func VerifyChallenge(userID uint32, responseBase64 string) (token string, err error) {
+func VerifyChallenge(userID uint32, responseBase64 string) (token string, role *string, err error) {
 	// Marshal convierte valores de Go -> JSON para enviarlos en el cuerpo HTTP
 	payload, err := json.Marshal(struct {
 		UserID   uint32 `json:"user_id"`
 		Response string `json:"response"`
 	}{UserID: userID, Response: responseBase64})
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	// bytes.NewReader para enviar JSON como cuerpo.
 	// La ruta es "/auth" sin diagonal final, igual que la registró auth-backend.
 	resp, err := httpClient.Post(baseURL()+"/auth", "application/json", bytes.NewReader(payload))
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	defer resp.Body.Close()
 
 	// 201 Created -> respuesta fue verificada
 	if resp.StatusCode != http.StatusCreated {
 		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("credenciales invalidas: %s", body)
+		return "", nil, fmt.Errorf("credenciales invalidas: %s", body)
 	}
 
 	// auth-backend regresa el JWT como texto plano (no como JSON), así que se lee tal cual.
-	tokenBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
+	//tokenBytes, err := io.ReadAll(resp.Body)
+	//if err != nil {
+	//	return "", err
+	//}
+
+	var parsed struct {
+		Token string  `json:"token" binding:"required"`
+		Rol   *string `json:"role"`
 	}
-	return string(tokenBytes), nil
+
+	if err = json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
+		return "", nil, fmt.Errorf("No pudo decodificarse el json: %w", err)
+
+	}
+
+	return parsed.Token, parsed.Rol, nil
 }
 
 // Register reenvía los datos de registro, auth-backend es quien cifra y guarda la contraseña
