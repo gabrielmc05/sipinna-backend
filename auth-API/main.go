@@ -268,8 +268,8 @@ func main() {
 	router.GET("/Usuario/:correo", requireAuthHeader, getUsuario)      // listo
 	router.PATCH("/Usuario/:correo", requireAuthHeader, editarUsuario) //listo
 	router.PATCH("/Correo/", requireAuthHeader, cambiarCorreo)         //listo
-	router.POST("/Registrar/Admin/:id", requireAuthHeader, registrarAdmin)
-	router.POST("/Registrar/Alimentador/:id", requireAuthHeader, registrarAlimentador)
+	router.POST("/Registrar/Admin/:id", requireAuthHeader, registrarAdmin)  //listo
+	router.POST("/Registrar/Alimentador/:id", requireAuthHeader, registrarAlimentador) //listo
 
 	router.Run()
 }
