@@ -20,7 +20,7 @@ var server *http.Server
 /* TODO: configure properly TLS */
 func init() {
 	dboper.Setup()
-	gin.SetMode(gin.ReleaseMode)
+	//gin.SetMode(gin.ReleaseMode)
 	var router *gin.Engine = gin.Default()
 
 	trustedProxies, err := dboper.GetTrustedProxies()
@@ -185,7 +185,7 @@ func register(c *gin.Context) {
 }
 
 type authHeader struct {
-	JWT string `header:"Authorization" binding:"required,jwt"`
+	JWT string `header:"Authorization" binding:"required"`
 }
 
 func password(c *gin.Context) {
@@ -483,7 +483,7 @@ func registerAdmin(c *gin.Context) {
 		header authHeader
 		json   struct {
 			Institution_id uint32       `json:"institution_id" binding:"required,number"`
-			New_admin      registerJSON `json:"new_admin" binding:"required,json"`
+			New_admin      registerJSON `json:"new_admin" binding:"required"`
 		}
 		err         error
 		user_id     uint32
@@ -577,7 +577,7 @@ func registerFeeders(c *gin.Context) {
 		header authHeader
 		json   struct {
 			Institution_id uint32         `json:"institution_id" binding:"required,number"`
-			New_feeders    []registerJSON `json:"new_feeders" binding:"required,json"`
+			New_feeders    []registerJSON `json:"new_feeders" binding:"required"`
 		}
 		newFeeders  []feederResponse
 		err         error
