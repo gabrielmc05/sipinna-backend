@@ -478,6 +478,7 @@ func authDelete(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+
 func registerAdmin(c *gin.Context) {
 	var (
 		header authHeader

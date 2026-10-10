@@ -155,7 +155,7 @@ func logout(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
-	c.JSON(http.StatusOK, gin.H{"mensaje" : "Sesión cerrada :)"})
+	c.JSON(http.StatusOK, gin.H{"mensaje": "Sesión cerrada :)"})
 }
 
 // consultar los datos del usuario (solo con el token del propio usuario)
@@ -213,19 +213,63 @@ func cambiarCorreo(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"mensaje": "Correo actualizado correctamente"})
 }
 
+func registrarAdmin(c *gin.Context) {
+	adminID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Identificador invalido"})
+		return
+	}
+
+	var input authbackend.RegisterAdminInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Datos de registro invalidos"})
+		return
+	}
+
+	response, err := authbackend.RegisterAdmin(uint32(adminID), input, c.GetHeader("Authorization"))
+	if err != nil {
+		respondBackendError(c, err)
+		return
+	}
+	c.Data(http.StatusCreated, "application/json", response)
+}
+
+func registrarAlimentador(c *gin.Context) {
+	adminID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Identificador invalido"})
+		return
+	}
+
+	var input authbackend.RegisterFeedersInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Datos de registro invalidos"})
+		return
+	}
+
+	response, err := authbackend.RegisterFeeders(uint32(adminID), input, c.GetHeader("Authorization"))
+	if err != nil {
+		respondBackendError(c, err)
+		return
+	}
+	c.Data(http.StatusCreated, "application/json", response)
+}
+
 func main() {
 
 	router := gin.Default()
 
-	router.GET("/Login/:correo", loginChallenge)  //listo
-	router.POST("/Login/", loginVerify)  // listo
-	router.POST("/Registro/", registro)   // listo
+	router.GET("/Login/:correo", loginChallenge)                                //listo
+	router.POST("/Login/", loginVerify)                                         // listo
+	router.POST("/Registro/", registro)                                         // listo
 	router.PATCH("/Contrasenna/:correo", requireAuthHeader, cambiarContrasenna) //listo
 
-	router.DELETE("/Login/:id", requireAuthHeader, logout) // listo
-	router.GET("/Usuario/:correo", requireAuthHeader, getUsuario) // listo
+	router.DELETE("/Login/:id", requireAuthHeader, logout)             // listo
+	router.GET("/Usuario/:correo", requireAuthHeader, getUsuario)      // listo
 	router.PATCH("/Usuario/:correo", requireAuthHeader, editarUsuario) //listo
-	router.PATCH("/Correo/", requireAuthHeader, cambiarCorreo) //listo 
+	router.PATCH("/Correo/", requireAuthHeader, cambiarCorreo)         //listo
+	router.POST("/Registrar/Admin/:id", requireAuthHeader, registrarAdmin)
+	router.POST("/Registrar/Alimentador/:id", requireAuthHeader, registrarAlimentador)
 
 	router.Run()
 }

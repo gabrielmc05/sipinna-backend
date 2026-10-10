@@ -79,7 +79,7 @@ func NewUser(email, password, name, surname string, phoneNumber *string) (user_i
     )
 
     if encryptedHash, err = EncryptHashUserPassword(password); err != nil {
-        log.Printf("Error at creating encrypting user's password hash: %w", err)
+        log.Printf("Error at creating encrypting user's password hash: %s", err)
         return 0, err
     }
 

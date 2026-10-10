@@ -36,7 +36,7 @@ SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 START TRANSACTION;
 
 	INSERT INTO usuario (correo, hash_contrasenna, nombre, apellidos, telefono)
-	VALUES (p_correo, p_hash_contrasenna, p_nombre, p_apellidos, p_telefono);
+	VALUES (p_correo, UNHEX(p_hash_contrasenna), p_nombre, p_apellidos, p_telefono);
 	SET p_id_usuario = LAST_INSERT_ID();
 	
 	INSERT INTO administrador (id_usuario, id_institucion, rol)
@@ -81,7 +81,7 @@ SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 START TRANSACTION;
 
 	INSERT INTO usuario (correo, hash_contrasenna, nombre, apellidos, telefono)
-	VALUES (p_correo, p_hash_contrasenna, p_nombre, p_apellidos, p_telefono);
+	VALUES (p_correo, UNHEX(p_hash_contrasenna), p_nombre, p_apellidos, p_telefono);
 	SET p_id_usuario = LAST_INSERT_ID();
 	
 	INSERT INTO administrador (id_usuario, id_institucion, rol)
@@ -112,3 +112,4 @@ BEGIN
 		SELECT 1 FROM usuario WHERE id_usuario = f_id_usuario);
 END; //
 DELIMITER ;
+
