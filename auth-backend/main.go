@@ -1,7 +1,7 @@
 package main
 
 import (
-	//"crypto/tls"
+	"crypto/tls"
 	"encoding/base64"
 	"fmt"
 	"log"
@@ -13,15 +13,14 @@ import (
 	"github.com/gabrielmc05/sipinna-backend/auth-backend/internal/authfuncs"
 	"github.com/gabrielmc05/sipinna-backend/auth-backend/internal/dboper"
 	"github.com/gin-gonic/gin"
-	// "github.com/gabrielmc05/sipinna-backend/auth-backend/internal/keys"
 )
 
 var server *http.Server
 
-/* TODO: add TLS config */
+/* TODO: configure properly TLS */
 func init() {
 	dboper.Setup()
-	//gin.SetMode(gin.ReleaseMode)
+	gin.SetMode(gin.ReleaseMode)
 	var router *gin.Engine = gin.Default()
 
 	trustedProxies, err := dboper.GetTrustedProxies()
@@ -39,13 +38,16 @@ func init() {
 	router.PATCH("/user/:email", userEdit)
 	router.PATCH("/email", email)
 	router.POST("/register/admin/:id", registerAdmin)
-	//router.POST("/register/feeder", registerFeeders)
+	router.POST("/register/feeder/:id", registerFeeders)
 
 	server = &http.Server{
 		Addr:         ":8081",
 		Handler:      router,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
+		TLSConfig: &tls.Config{
+			MinVersion: tls.VersionTLS13,
+		},
 	}
 }
 
@@ -95,7 +97,7 @@ func authRequest(c *gin.Context) {
 func auth(c *gin.Context) {
 	var (
 		json struct {
-			User_id  uint32 `json:"user_id" binding:"required"`
+			User_id  uint32 `json:"user_id" binding:"required,number"`
 			Response string `json:"response" binding:"required,base64"`
 		}
 		err      error
@@ -146,9 +148,9 @@ func auth(c *gin.Context) {
 
 type registerJSON struct {
 	Email        string  `json:"email" binding:"required,email"`
-	Password     string  `json:"password" binding:"required"`
-	Name         string  `json:"name" binding:"required"`
-	Surname      string  `json:"surname" binding:"required"`
+	Password     string  `json:"password" binding:"required,alphanum,min=8,max=50"`
+	Name         string  `json:"name" binding:"required,min=3,max=30"`
+	Surname      string  `json:"surname" binding:"required,min=3,max=100"`
 	Phone_number *string `json:"phone_number" binding:"e164"`
 }
 
@@ -183,7 +185,7 @@ func register(c *gin.Context) {
 }
 
 type authHeader struct {
-	JWT string `header:"Authorization" binding:"required"`
+	JWT string `header:"Authorization" binding:"required,jwt"`
 }
 
 func password(c *gin.Context) {
@@ -191,7 +193,7 @@ func password(c *gin.Context) {
 		header authHeader
 		email  string = c.Param("email")
 		json   struct {
-			New_password string `json:"new_password" binding:"required"`
+			New_password string `json:"new_password" binding:"required,alphanum"`
 		}
 		err     error
 		user_id uint32
@@ -313,9 +315,9 @@ func userEdit(c *gin.Context) {
 	var (
 		header authHeader
 		json   struct {
-			Name         *string `json:"name"`
-			Surname      *string `json:"surname"`
-			Phone_number *string `json:"phone_number"`
+			Name         *string `json:"name" binding:"min=3,max=30"`
+			Surname      *string `json:"surname" binding:"min=3,max=30"`
+			Phone_number *string `json:"phone_number" binding:"e164"`
 		}
 		email   string = c.Param("email")
 		user_id uint32
@@ -389,7 +391,7 @@ func email(c *gin.Context) {
 	var (
 		header authHeader
 		json   struct {
-			User_id   uint32 `json:"user_id" binding:"required"`
+			User_id   uint32 `json:"user_id" binding:"required,number"`
 			New_email string `json:"new_email" binding:"required,email"`
 		}
 		err error
@@ -480,8 +482,8 @@ func registerAdmin(c *gin.Context) {
 	var (
 		header authHeader
 		json   struct {
-			Institution_id uint32       `json:"institution_id" binding:"required"`
-			New_admin      registerJSON `json:"new_admin" binding:"required"`
+			Institution_id uint32       `json:"institution_id" binding:"required,number"`
+			New_admin      registerJSON `json:"new_admin" binding:"required,json"`
 		}
 		err         error
 		user_id     uint32
@@ -565,91 +567,111 @@ func registerAdmin(c *gin.Context) {
 	})
 }
 
-//func registerFeeders(c *gin.Context) {
-//	var (
-//		header authHeader
-//		json   struct {
-//			Institution_id uint32         `json:"institution_id" binding:"required"`
-//			New_admin      []registerJSON `json:"new_feeders" binding:"required"`
-//		}
-//		err         error
-//		user_id     uint32
-//		admin_id    uint64
-//		user_name   string
-//		userIsAdmin bool
-//		newAdmin    dboper.Admin
-//	)
-//
-//	if err = c.ShouldBindJSON(&json); err != nil {
-//		c.Error(err)
-//		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-//			"error": fmt.Sprintf("Malformed request body: %s.", err),
-//		})
-//		return
-//	}
-//
-//	if err = c.ShouldBindHeader(&header); err != nil {
-//		c.Error(err)
-//		c.Header("WWW-Authenticate", err.Error())
-//		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-//			"error": "Authorization token expected.",
-//		})
-//		return
-//	}
-//
-//	if admin_id, err = strconv.ParseUint(c.Param("id"), 10, 32); err != nil {
-//		c.Error(err)
-//		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
-//			"error": "Malformed request parameter.",
-//		})
-//		return
-//	}
-//
-//	if userIsAdmin, err = dboper.UserIsAdmin(uint32(admin_id)); err != nil {
-//		c.Error(err)
-//		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-//			"error": err.Error(),
-//		})
-//		return
-//	}
-//
-//	if !userIsAdmin {
-//		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-//			"error": fmt.Sprintf("User with id %d, is not admin.", admin_id),
-//		})
-//		return
-//	}
-//
-//	if _, err = authfuncs.VerifyToken(header.JWT, uint32(admin_id)); err != nil {
-//		c.Error(err)
-//		c.Header("WWW-Authenticate", err.Error())
-//		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-//			"error": "Authorization token invalid.",
-//		})
-//		return
-//	}
-//
-//	newAdmin = dboper.Admin{
-//		Email:         json.New_admin.Email,
-//		Password:      json.New_admin.Password,
-//		Name:          json.New_admin.Name,
-//		Surname:       json.New_admin.Surname,
-//		PhoneNumber:   json.New_admin.Phone_number,
-//		InstitutionId: json.Institution_id,
-//		Role:          dboper.Administrator,
-//	}
-//
-//	if user_id, user_name, err = dboper.NewAdmin(&newAdmin); err != nil {
-//		c.Error(err)
-//		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
-//			"error": err.Error(),
-//		})
-//		return
-//	}
-//
-//	c.JSON(http.StatusCreated, gin.H{
-//		"message":   "New administrator created successfully.",
-//		"user_id":   user_id,
-//		"user_name": user_name,
-//	})
-//}
+type feederResponse struct {
+	User_id   uint32 `json:"user_id"`
+	User_name string `json:"user_name"`
+}
+
+func registerFeeders(c *gin.Context) {
+	var (
+		header authHeader
+		json   struct {
+			Institution_id uint32         `json:"institution_id" binding:"required,number"`
+			New_feeders    []registerJSON `json:"new_feeders" binding:"required,json"`
+		}
+		newFeeders  []feederResponse
+		err         error
+		admin_id    uint64
+		userIsAdmin bool
+		response    gin.H
+	)
+
+	if err = c.ShouldBindJSON(&json); err != nil {
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": fmt.Sprintf("Malformed request body: %s.", err),
+		})
+		return
+	}
+
+	if err = c.ShouldBindHeader(&header); err != nil {
+		c.Error(err)
+		c.Header("WWW-Authenticate", err.Error())
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error": "Authorization token expected.",
+		})
+		return
+	}
+
+	if admin_id, err = strconv.ParseUint(c.Param("id"), 10, 32); err != nil {
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+			"error": "Malformed request parameter.",
+		})
+		return
+	}
+
+	if userIsAdmin, err = dboper.UserIsAdmin(uint32(admin_id)); err != nil {
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
+		})
+		return
+	}
+
+	if !userIsAdmin {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error": fmt.Sprintf("User with id %d, is not admin.", admin_id),
+		})
+		return
+	}
+
+	if _, err = authfuncs.VerifyToken(header.JWT, uint32(admin_id)); err != nil {
+		c.Error(err)
+		c.Header("WWW-Authenticate", err.Error())
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error": "Authorization token invalid.",
+		})
+		return
+	}
+
+	for _, feeder := range json.New_feeders {
+		var (
+			user_name string
+			user_id   uint32
+			newFeeder dboper.Admin = dboper.Admin{
+				Email:         feeder.Email,
+				Password:      feeder.Password,
+				Name:          feeder.Name,
+				Surname:       feeder.Surname,
+				PhoneNumber:   feeder.Phone_number,
+				InstitutionId: json.Institution_id,
+				Role:          dboper.Feeder,
+			}
+			r feederResponse
+		)
+
+		if user_id, user_name, err = dboper.NewAdmin(&newFeeder); err != nil {
+			c.Error(err)
+			continue
+		}
+
+		r.User_id = user_id
+		r.User_name = user_name
+		newFeeders = append(newFeeders, r)
+	}
+
+	if len(c.Errors) > 0 {
+		response = gin.H{
+			"new_feeders": newFeeders,
+			"errors":      c.Errors,
+		}
+	} else {
+		response = gin.H{
+			"new_feeders": newFeeders,
+			"message":     "New feeders created successfully.",
+		}
+	}
+
+	c.JSON(http.StatusCreated, response)
+}

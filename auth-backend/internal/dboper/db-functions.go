@@ -1,10 +1,11 @@
 package dboper
 
 import (
-    "database/sql"
-    "fmt"
-    "log"
-    "strings"
+	"database/sql"
+	"fmt"
+	"log"
+	"net/mail"
+	"strings"
 )
 
 func GetUserPasswordHash(user_id uint32) (passwordHash []byte, err error) {
@@ -133,6 +134,11 @@ func NewAdmin(admin *Admin) (user_id uint32, user_name string, err error) {
 		encryptedHash string
 		query         string
 	)
+
+	if _, err = mail.ParseAddress(admin.Email); err != nil {
+		err = fmt.Errorf("Email address invalid: %w.", err)
+		return 0, "", err
+	}
 
 	if encryptedHash, err = EncryptHashUserPassword(admin.Password); err != nil {
 		log.Printf("Error at creating encrypting user's password hash: %w", err)
