@@ -165,7 +165,7 @@ BEGIN
 		folio, id_usuario, correo_contacto, codigo_seguridad_hash, descripcion,
 		horario_aproximado, es_anonimo, desea_seguimiento, hay_adulto_involucrado
 	) VALUES (
-		p_folio, p_id_usuario, p_correo_contacto, p_codigo_seguridad_hash, p_descripcion,
+		p_folio, p_id_usuario, p_correo_contacto, UNHEX(p_codigo_seguridad_hash), p_descripcion,
 		p_horario_aproximado, p_es_anonimo, p_desea_seguimiento, p_hay_adulto_involucrado
 	);
 	INSERT INTO ubicacion (folio, latitud, longitud, direccion_texto, id_territorio)

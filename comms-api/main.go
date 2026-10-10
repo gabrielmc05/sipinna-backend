@@ -23,7 +23,7 @@ func main() {
 	api := router.Group("/api/v1")
 	api.POST("/reportes", handlers.CreateReport)
 	api.POST("/reportes/:folio/evidencias", handlers.UploadEvidence)
-	api.POST("/reportes/consultar", handlers.ConsultReport)
+	api.GET("/reportes/consultar", handlers.ConsultReport)
 	api.GET("/reportes", handlers.ListUserReports)
 	api.PATCH("/reportes/:folio/estatus", handlers.UpdateReportStatus)
 
