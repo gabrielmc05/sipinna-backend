@@ -69,7 +69,7 @@ CREATE TABLE `institucion` (
 -- =========================================================
 
 CREATE TABLE `reporte` (
-  `folio` char(10) NOT NULL,
+  `folio` char(15) NOT NULL,
   `id_usuario` int(11) DEFAULT NULL,
   `correo_contacto` varchar(254) CHARACTER SET utf8mb3 COLLATE utf8mb3_uca1400_ai_ci DEFAULT NULL,
   `codigo_seguridad_hash` varchar(255) NOT NULL,
@@ -113,7 +113,7 @@ CREATE TABLE `administrador` (
 -- =========================================================
 
 CREATE TABLE `reporteetiqueta` (
-  `folio` char(10) NOT NULL,
+  `folio` char(15) NOT NULL,
   `nombre_etiqueta` varchar(50) CHARACTER SET utf8mb3 COLLATE utf8mb3_uca1400_ai_ci NOT NULL,
   `tipo` enum('Categoria','Prioridad','Riesgo') NOT NULL,
   PRIMARY KEY (`folio`,`nombre_etiqueta`,`tipo`),
@@ -133,7 +133,7 @@ CREATE TABLE `reporteetiqueta` (
 -- =========================================================
 
 CREATE TABLE `ubicacion` (
-  `folio` char(10) NOT NULL,
+  `folio` char(15) NOT NULL,
   `latitud` decimal(9,6) NOT NULL,
   `longitud` decimal(9,6) NOT NULL,
   `direccion_texto` tinytext DEFAULT NULL,
@@ -156,7 +156,7 @@ CREATE TABLE `ubicacion` (
 
 CREATE TABLE `evidencia` (
   `id_evidencia` int(11) NOT NULL AUTO_INCREMENT,
-  `folio` char(10) NOT NULL,
+  `folio` char(15) NOT NULL,
   `tipo_archivo` enum('Imagen','Video') NOT NULL,
   `ruta` varchar(255) NOT NULL,
   PRIMARY KEY (`id_evidencia`),
@@ -173,7 +173,7 @@ CREATE TABLE `evidencia` (
 -- =========================================================
 
 CREATE TABLE `menor` (
-  `folio` char(10) NOT NULL,
+  `folio` char(15) NOT NULL,
   `contador` tinyint(3) unsigned NOT NULL,
   `edad_aproximada` tinyint(3) unsigned DEFAULT NULL,
   `genero` enum('Masculino','Femenino','No identificado') NOT NULL DEFAULT 'No identificado',
@@ -191,10 +191,10 @@ CREATE TABLE `menor` (
 -- =========================================================
 
 CREATE TABLE `expediente` (
-  `folio` char(10) NOT NULL,
+  `folio` char(15) NOT NULL,
   `id_institucion` int(11) NOT NULL,
   `id_usuario` int(11) DEFAULT NULL,
-  `estado` enum('Nuevo','En revisión','Asignado','En investigación','Cerrado','Descartado') NOT NULL DEFAULT 'Nuevo',
+  `estado` enum('Nuevo','En revisión','Asignado','En investigación','Canalizado a Procuraduría','Cerrado','Descartado') NOT NULL DEFAULT 'Nuevo',
   `fecha_inicio` timestamp NOT NULL DEFAULT current_timestamp(),
   `fecha_ultima_actualizacion` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `observaciones` text DEFAULT NULL,
@@ -220,7 +220,7 @@ CREATE TABLE `expediente` (
 
 CREATE TABLE `seguimiento` (
   `contador` int(11) NOT NULL AUTO_INCREMENT,
-  `folio` char(10) NOT NULL,
+  `folio` char(15) NOT NULL,
   `id_usuario` int(11) DEFAULT NULL,
   `descripcion` text NOT NULL,
   `fecha` date NOT NULL DEFAULT curdate(),
@@ -267,4 +267,3 @@ CREATE TABLE `TRUSTED_PROXIES` (
   CONSTRAINT `PK_IP`
     PRIMARY KEY (IP_1, IP_2, IP_3, IP_4)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
-
