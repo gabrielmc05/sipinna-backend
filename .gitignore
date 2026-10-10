@@ -7,8 +7,12 @@
 .env.production
 .env.test
 
+
 # But DO commit the template so teammates know what variables to set
 !.env.example
 !.env.sample
 !.env.keys.example
 !.env.keys.sample
+
+
+*.exe

@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
 
     environment:
-      MARIADB_ROOT_PASSWORD: cambia_esta_contrasena
+      MARIADB_ROOT_PASSWORD: papupro67
       MARIADB_DATABASE: sipinna_db
 
     ports:
