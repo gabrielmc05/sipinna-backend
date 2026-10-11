@@ -234,6 +234,32 @@ func UploadEvidence(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"mensaje": "Evidencias guardadas y vinculadas exitosamente."})
 }
 
+func ConsultFolio(c *gin.Context) {
+	userID, err := token.Authenticate(c.GetHeader("Authorization"))
+	if err != nil {
+		if errors.Is(err, token.ErrInvalidToken) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "token de autorización inválido o faltante"})
+			return
+		}
+		log.Printf("authenticate report list request: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no fue posible validar la autorización"})
+		return
+	}
+
+	folio := c.Param("folio")
+	report, err := dboper.ConsultFolio(folio, userID)
+	if err != nil {
+		if errors.Is(err, dboper.ErrReportNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "reporte no encontrado"})
+			return
+		}
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "No fue posible consultar el reporte (no autorizado)."})
+		return
+	}
+
+	c.JSON(http.StatusOK, report)
+}
+
 func ConsultReport(c *gin.Context) {
 	var request reportConsultRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -271,6 +297,17 @@ func ListUserReports(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, reports)
+}
+
+func Institutions(c *gin.Context) {
+	institutions, err := dboper.Institutions()
+	if err != nil {
+		log.Printf("Error obteniendo reportes: %s", err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "no fue posible consultar las instituciones"})
+		return
+	}
+
+	c.JSON(http.StatusOK, institutions)
 }
 
 func UpdateReportStatus(c *gin.Context) {
@@ -428,7 +465,7 @@ func randomString(length int, alphabet string) (string, error) {
 	var result strings.Builder
 	result.Grow(length)
 	max := big.NewInt(int64(len(alphabet)))
-	for i := 0; i < length; i++ {
+	for range length {
 		index, err := rand.Int(rand.Reader, max)
 		if err != nil {
 			return "", err

@@ -24,8 +24,11 @@ func main() {
 	api.POST("/reportes", handlers.CreateReport)
 	api.POST("/reportes/:folio/evidencias", handlers.UploadEvidence)
 	api.GET("/reportes/consultar", handlers.ConsultReport)
+	api.GET("/reportes/:folio", handlers.ConsultFolio)
 	api.GET("/reportes", handlers.ListUserReports)
 	api.PATCH("/reportes/:folio/estatus", handlers.UpdateReportStatus)
+
+	api.GET("/instituciones", handlers.Institutions)
 
 	if err := http.ListenAndServe(":8085", router); err != nil {
 		log.Fatalf("start HTTP server: %v", err)
