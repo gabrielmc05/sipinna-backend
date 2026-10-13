@@ -49,6 +49,7 @@ func Setup() error {
 	return err
 }
 
+// CloseDB se usa en caso de tener que cerrar la conexión.
 func CloseDB() error {
 	return db.Close()
 }
