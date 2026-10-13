@@ -19,29 +19,56 @@ var server *http.Server
 
 /* TODO: configure properly TLS */
 func init() {
+<<<<<<< HEAD
 	if err := dboper.Setup(); err != nil {
 		log.Fatalf("Error al conectarse a la base de datos: %s.", err)
 	}
 	//gin.SetMode(gin.ReleaseMode)
+=======
+	// Arranca la conexión a la base de datos
+	if err := dboper.Setup(); err != nil {
+		log.Fatalf("The connection to the database has failed: %s", err)
+		defer dboper.CloseDB()
+	}
+
+	//gin.SetMode(gin.ReleaseMode)
+
+>>>>>>> main
 	var router *gin.Engine = gin.Default()
 
+	// Para las direcciones permitidas
 	trustedProxies, err := dboper.GetTrustedProxies()
 	if err != nil {
 		log.Printf("Error at retrieving trusted proxies: %s", err)
 	}
 	router.SetTrustedProxies(trustedProxies)
 
+	// ASIGNACIÓN ENDPOINTS
+	// Endpoints de autenticación
 	router.GET("/auth/:email", authRequest)
 	router.POST("/auth", auth)
 	router.DELETE("/auth/:id", authDelete)
+<<<<<<< HEAD
 	router.POST("/register", register) // listo
 	router.PATCH("/password/:email", password)
 	router.GET("/user/:email", user)
 	router.PATCH("/user/:email", userEdit)
 	router.PATCH("/email", email)
+=======
+
+	// Endpoints de registro
+	router.POST("/register", register)
+>>>>>>> main
 	router.POST("/register/admin/:id", registerAdmin)
 	router.POST("/register/feeder/:id", registerFeeders)
 
+	// Endpoints de datos de usuario (modificación y obtención)
+	router.GET("/user/:email", user)
+	router.PATCH("/password/:email", password)
+	router.PATCH("/user/:email", userEdit)
+	router.PATCH("/email", email)
+
+	// Configuración del servidor
 	server = &http.Server{
 		Addr:         ":8081",
 		Handler:      router,
@@ -71,6 +98,7 @@ func authRequest(c *gin.Context) {
 		challenge []byte
 	)
 
+	// Checa si la dirección de correo electrónico es válida
 	if _, err = mail.ParseAddress(email); err != nil {
 		c.Error(err)
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{

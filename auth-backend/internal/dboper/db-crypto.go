@@ -46,6 +46,9 @@ func DecryptUserPasswordHash(encrypted []byte) (password string, err error) {
 	return string(passwordBytes), err
 }
 
+// NewUserSignatureKey se usa para crear una llave aleatoria,
+// para usarla en la firma digital en el JSON Web Token
+// y la inserta en la base de datos.
 func NewUserSignatureKey(user_id uint32) (key []byte, err error) {
 	var (
 		result       sql.Result
@@ -84,6 +87,8 @@ func NewUserSignatureKey(user_id uint32) (key []byte, err error) {
 	return key, nil
 }
 
+// GetTrustedProxies obtiene de la base de datos las direcciones
+// de los proxies en los que se confía
 func GetTrustedProxies() (result []string, err error) {
 	var (
 		proxy string

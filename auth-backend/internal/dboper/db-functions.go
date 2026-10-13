@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// GetUserPasswordHash
 func GetUserPasswordHash(user_id uint32) (passwordHash []byte, err error) {
 	var (
 		passwordHashString string
