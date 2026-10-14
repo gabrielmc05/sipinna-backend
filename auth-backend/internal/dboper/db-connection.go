@@ -17,9 +17,9 @@ func init() {
 	}
 }
 
-// Se usa esta función para hacer la conexión con la respectiva
-// base de datos cuya fuente esté en las variables de entorno,
-// meramente una función wrapper para realizarlo
+// Setup se usa para hacer la conexión con la respectiva base de datos
+// cuya fuente esté en las variables de entorno, meramente una función
+// wrapper para realizarlo.
 func Setup() error {
 	var (
 		dataSourceName strings.Builder

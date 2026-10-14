@@ -1,3 +1,6 @@
+// Es una implementación chafa del protocolo CHAP, para la
+// autenticación. Se utiliza dentro del paquete, aunque los objetos
+// estén públicos.
 package authfuncs
 
 import (
@@ -11,17 +14,20 @@ import (
 	"time"
 )
 
-const MAX_CHAP_TIME time.Duration = 300 * time.Second // 5m0s
+// MAX_CHAP_TIME define el tiempo máximo para completar la
+// autenticación antes de expirar.
+const MAX_CHAP_TIME time.Duration = 5 * time.Minute // 5m0s
 
-// Para iniciar un nuevo intento de autenticación
+// CHAP es para iniciar un nuevo intento de autenticación
 type CHAP struct {
 	expirationTime time.Time
 	challenge      []byte
 	expected       [sha256.Size]byte
 }
 
-// Debe generarse cada que se quiera un nuevo intento
-// de autenticación
+// NewCHAP crea un nuevo intento de autenticación con un tiempo de
+// expiración con base en el tiempo actual generarse cada que se
+// quiera un nuevo intento de autenticación.
 func NewCHAP(passwordHash []byte) (CHAP, error) {
 	var (
 		mac       hash.Hash = hmac.New(sha256.New, passwordHash)
@@ -45,12 +51,13 @@ func NewCHAP(passwordHash []byte) (CHAP, error) {
 	}, nil
 }
 
-// Función getter que regresa el challenge
+// Challenge es un método getter que regresa el challenge
 func (chap *CHAP) Challenge() []byte {
 	return chap.challenge
 }
 
-// Función que compara la respuesta con el reto
+// Authenticate es el método que compara la respuesta del intento de
+// autenticación con la respuesta esperada.
 func (chap *CHAP) Authenticate(response [32]byte, authTime time.Time) (ok bool, err error) {
 	if authTime.After(chap.expirationTime) {
 		return false, fmt.Errorf(

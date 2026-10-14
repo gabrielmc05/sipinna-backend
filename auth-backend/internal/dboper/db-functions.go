@@ -8,7 +8,8 @@ import (
 	"strings"
 )
 
-// GetUserPasswordHash
+// GetUserPasswordHash obtiene de la base de datos la salida Hash de
+// la contraseña, y la desencripta usando la llave simétrica.
 func GetUserPasswordHash(user_id uint32) (passwordHash []byte, err error) {
 	var (
 		passwordHashString string
@@ -29,6 +30,8 @@ func GetUserPasswordHash(user_id uint32) (passwordHash []byte, err error) {
 	return []byte(passwordHashString), nil
 }
 
+// GetUserSignatureKey obtiene la llave de firma de los JWT, se usa
+// para confirmación de identidad.
 func GetUserSignatureKey(user_id uint32) (key []byte, err error) {
 	if err = db.QueryRow("SELECT llave_firma FROM token where id_usuario=?",
 		user_id).Scan(&key); err != nil {
@@ -40,6 +43,9 @@ func GetUserSignatureKey(user_id uint32) (key []byte, err error) {
 	return key, nil
 }
 
+// GetUserIDWithEmail recibe una dirección de correo electrónico
+// y consulta si hay un usuario registrado en la base datos con esa
+// dirección.
 func GetUserIDWithEmail(email string) (user_id uint32, err error) {
 	if err = db.QueryRow("SELECT id_usuario FROM usuario WHERE correo=?",
 		email).Scan(&user_id); err != nil {
@@ -51,6 +57,7 @@ func GetUserIDWithEmail(email string) (user_id uint32, err error) {
 	return user_id, nil
 }
 
+// UserExists recibe un ID y consulta a la base de datos si existe.
 func UserExists(user_id uint32) (ok bool, err error) {
 	if err = db.QueryRow("SELECT ExisteUsuario(?)", user_id).Scan(&ok); err != nil {
 		return false, err
@@ -58,6 +65,8 @@ func UserExists(user_id uint32) (ok bool, err error) {
 	return ok, nil
 }
 
+// UserIsAdmin recibe un ID y consulta a la base de datos si es un
+// usuario administrador.
 func UserIsAdmin(user_id uint32) (ok bool, err error) {
 	if ok, err = UserExists(user_id); err != nil {
 		return false, err
@@ -71,6 +80,9 @@ func UserIsAdmin(user_id uint32) (ok bool, err error) {
 	return ok, nil
 }
 
+// NewUser registra un usuario en la base de datos, recibiendo sus
+// datos personales, regresa un error si no pudo realizarse el
+// registro.
 func NewUser(email, password, name, surname string, phoneNumber *string) (user_id uint32, err error) {
 	var (
 		encryptedHash string
@@ -113,6 +125,7 @@ func NewUser(email, password, name, surname string, phoneNumber *string) (user_i
 	return uint32(lastInsertID), nil
 }
 
+// Role es ara definir constantes Rol al registrar en la base de datos
 type Role uint8
 
 const (
@@ -121,6 +134,7 @@ const (
 	User          Role = 2
 )
 
+// Admin se usa para registrar un usuario administrador
 type Admin struct {
 	Email         string
 	Password      string
@@ -131,6 +145,9 @@ type Admin struct {
 	Role          Role
 }
 
+// NewAdmin registra un usuario administrador en la base de datos,
+// recibiendo sus datos personales y profesionales, regresa un error
+// si no pudo realizarse el registro.
 func NewAdmin(admin *Admin) (user_id uint32, user_name string, err error) {
 	var (
 		encryptedHash string
@@ -167,6 +184,8 @@ func NewAdmin(admin *Admin) (user_id uint32, user_name string, err error) {
 	return user_id, user_name, nil
 }
 
+// ChangeUserPassword se usa al cambiar la contraseña de un usuario,
+// la hashea y encripta antes de registrarla.
 func ChangeUserPassword(user_id uint32, newPassword string) (err error) {
 	if newPassword, err = EncryptHashUserPassword(newPassword); err != nil {
 		log.Println(err)
@@ -191,6 +210,8 @@ func ChangeUserEmail(user_id uint32, newEmail string) (err error) {
 	return nil
 }
 
+// ChangeUserDatum es para poder cambiar número de teléfono, nombre,
+// o apellidos de un usuario o administrador.
 func ChangeUserDatum(user_id uint32, field, newDatum string) (err error) {
 	var query strings.Builder
 
@@ -207,12 +228,15 @@ func ChangeUserDatum(user_id uint32, field, newDatum string) (err error) {
 	return nil
 }
 
+// UserData se utiliza para obtener los datos personales de un usuario.
 type UserData struct {
 	Name         string
 	Surname      string
 	Phone_number *string
 }
 
+// GetUserData recibe un ID y regresa los datos personales de un
+// usuario: nombre, apellidos y contraseña.
 func GetUserData(user_id uint32) (user_data UserData, err error) {
 	if err = db.QueryRow("SELECT nombre, apellidos, telefono FROM usuario WHERE id_usuario=?",
 		user_id).Scan(&user_data.Name, &user_data.Surname, &user_data.Phone_number); err != nil {
@@ -223,6 +247,8 @@ func GetUserData(user_id uint32) (user_data UserData, err error) {
 	return user_data, nil
 }
 
+// DeleteUserSignatureKey borra la llave de firma de JWT actual,
+// se utiliza al hacer un cerrado de sesión
 func DeleteUserSignatureKey(user_id uint32) (err error) {
 	if _, err = db.Exec("UPDATE token SET llave_firma=NULL where id_usuario=?",
 		user_id); err != nil {
@@ -233,6 +259,8 @@ func DeleteUserSignatureKey(user_id uint32) (err error) {
 	return nil
 }
 
+// GetUserRole recibe un ID y regresa el rol del usuario con ese ID,
+// esto solo se cumple si el usuario es administrador.
 func GetUserRole(user_id uint32) (role string, err error) {
 	if err = db.QueryRow("SELECT rol from administrador where id_usuario = ?", user_id).Scan(&role); err != nil {
 		return "", err

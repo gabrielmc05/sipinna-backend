@@ -25,7 +25,7 @@ func init() {
 		defer dboper.CloseDB()
 	}
 
-	//gin.SetMode(gin.ReleaseMode)
+	//gin.SetMode(gin.ReleaseMode) // No sé por qué no funciona esto
 
 	var router *gin.Engine = gin.Default()
 

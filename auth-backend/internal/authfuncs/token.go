@@ -8,8 +8,10 @@ import (
 	"time"
 )
 
+// TOKEN_EXPIRATION_TIME es el tiempo máximo que debe durar un JWT
 const TOKEN_EXPIRATION_TIME time.Duration = 24 * time.Hour // 24h0m0s
 
+// GenerateToken crea un nuevo token con el ID del usuario
 func GenerateToken(user_id uint32) (string, error) {
 	var (
 		err        error
@@ -31,28 +33,8 @@ func GenerateToken(user_id uint32) (string, error) {
 	return token.SignedString(key)
 }
 
-/* TESTING PURPOSES ONLY */
-//func GenerateToken(user_id uint32) (key []byte, tokenStr string, err error) {
-//	var (
-//		token      *jwt.Token
-//		expiration *jwt.NumericDate = jwt.NewNumericDate(time.Now().Add(TOKEN_EXPIRATION_TIME))
-//	)
-//
-//	if key, err = dboper.NewUserSignatureKey(user_id); err != nil {
-//		log.Printf("Error creating JWT for user with id %d: %s", user_id, err)
-//	}
-//
-//	token = jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
-//		ExpiresAt: expiration,
-//		Subject:   strconv.FormatUint(uint64(user_id), 10),
-//	})
-//
-//	tokenStr, err = token.SignedString(key)
-//	log.Println(base64.StdEncoding.EncodeToString(key))
-//
-//	return key, tokenStr, err
-//}
-
+// VerifyToken verifica el JWT de un usuario con su firma.
+// NOTA: no me di cuenta que se puede obtener el ID directo del JWT.
 func VerifyToken(tokenString string, user_id uint32) (ok bool, err error) {
 	var token *jwt.Token
 

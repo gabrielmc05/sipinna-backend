@@ -25,6 +25,9 @@ func init() {
 	}
 }
 
+// getSymmetricDBKey obtiene la llave simétrica que se utiliza para
+// encriptar y desencriptar los hashes de las contraseñas de los
+// usuarios.
 func getSymmetricDBKey() (dbkey []byte) {
 	if val, ok := os.LookupEnv("MARIADB_DATABASE_SYMMETRIC_KEY"); ok {
 		dbkey, _ = hex.DecodeString(val)
