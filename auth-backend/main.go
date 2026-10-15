@@ -25,9 +25,14 @@ func init() {
 		defer dboper.CloseDB()
 	}
 
+	dboper.ChangeUserPassword(3, "contrasena")
+
 	//gin.SetMode(gin.ReleaseMode) // No sé por qué no funciona esto
 
-	var router *gin.Engine = gin.Default()
+	router := gin.Default()
+
+	// Permite solicitudes desde la aplicación web local.
+	router.Use(corsMiddleware())
 
 	// Para las direcciones permitidas
 	trustedProxies, err := dboper.GetTrustedProxies()
@@ -175,6 +180,33 @@ func auth(c *gin.Context) {
 	}
 
 	//c.String(http.StatusCreated, token)
+}
+
+/**
+ * corsMiddleware permite que la aplicación web local pueda
+ * comunicarse con el Auth Backend desde el puerto de Vite.
+ *
+ * @return gin.HandlerFunc Middleware que agrega los encabezados CORS.
+ */
+func corsMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "http://localhost:5173")
+		c.Writer.Header().Set(
+			"Access-Control-Allow-Headers",
+			"Origin, Content-Type, Accept, Authorization",
+		)
+		c.Writer.Header().Set(
+			"Access-Control-Allow-Methods",
+			"GET, POST, PATCH, PUT, DELETE, OPTIONS",
+		)
+
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+
+		c.Next()
+	}
 }
 
 type registerJSON struct {

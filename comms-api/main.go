@@ -9,6 +9,36 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+/**
+ * corsMiddleware configura las políticas CORS para permitir que
+ * la aplicación web local consuma la API desde el navegador.
+ *
+ * Se permiten únicamente los orígenes utilizados durante el
+ * desarrollo local de la aplicación.
+ */
+func corsMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		origin := c.GetHeader("Origin")
+
+		// Orígenes permitidos durante el desarrollo local.
+		if origin == "http://localhost:5173" ||
+			origin == "http://127.0.0.1:5173" {
+
+			c.Header("Access-Control-Allow-Origin", origin)
+			c.Header("Access-Control-Allow-Methods", "GET, POST, PATCH, PUT, DELETE, OPTIONS")
+			c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
+		}
+
+		// Responder correctamente a las solicitudes preflight.
+		if c.Request.Method == http.MethodOptions {
+			c.AbortWithStatus(http.StatusNoContent)
+			return
+		}
+
+		c.Next()
+	}
+}
+
 func main() {
 	if err := dboper.Setup(); err != nil {
 		log.Fatalf("connect to database: %v", err)
@@ -20,6 +50,9 @@ func main() {
 	}()
 
 	router := gin.Default()
+
+	router.Use(corsMiddleware())
+
 	api := router.Group("/api/v1")
 	api.POST("/reportes", handlers.CreateReport)
 	api.POST("/reportes/:folio/evidencias", handlers.UploadEvidence)

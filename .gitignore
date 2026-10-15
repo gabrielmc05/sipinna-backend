@@ -6,6 +6,8 @@
 .env.development
 .env.production
 .env.test
+.env.sample
+.env.keys.sample
 
 
 # But DO commit the template so teammates know what variables to set
