@@ -27,7 +27,6 @@ func init() {
 	dboper.ChangeUserPassword(3, "cisco123")
 	dboper.ChangeUserPassword(4, "cisco321")
 
-	dboper.ChangeUserPassword(3, "contrasena")
 
 	//gin.SetMode(gin.ReleaseMode) // No sé por qué no funciona esto
 
