@@ -6,7 +6,7 @@ SET @territorio_id = LAST_INSERT_ID();
 -- Institución
 INSERT INTO institucion (id_territorio, nombre, tipo, correo, telefono, direccion)
 VALUES (@territorio_id, 'SIPINNA Atizapán de Zaragoza', 'SIPINNA',
-        'contacto@sipinna-atizapan.gob.mx', '5555555555', 'Av. Ejemplo 123');
+        'contacto@sipinna-atizapan.gob.mx', '5588223399', 'Av. Ejemplo 12345');
 SET @institucion_id = LAST_INSERT_ID();
 
 -- Usuario que será Administrador

@@ -1,3 +1,5 @@
+// institutions.go es para definir la estructura de datos y las funciones relacionadas con las instituciones en la base de datos.
+
 package dboper
 
 import (
@@ -28,6 +30,7 @@ type Institution struct {
 		Nombre        string `json:"nombre"`
 	} `json:"territorio"`
 }
+
 
 func Institutions() (institutions []Institution, err error) {
 	var rows *sql.Rows

@@ -1,3 +1,7 @@
+// handlers.go es para definir los controladores de la API REST relacionados con los reportes, 
+// incluyendo la creación, consulta y actualización de reportes, así como la carga de evidencias 
+// y la obtención de instituciones.
+
 package handlers
 
 import (
@@ -58,6 +62,9 @@ type statusRequest struct {
 	Observations *string `json:"observaciones"`
 }
 
+// CreateReport maneja la creación de un nuevo reporte. 
+// Valida la solicitud, genera un folio único y un código privado, 
+// y guarda el reporte en la base de datos.
 func CreateReport(c *gin.Context) {
 	var request reportRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -137,6 +144,9 @@ func CreateReport(c *gin.Context) {
 	})
 }
 
+// UploadEvidence maneja la carga de evidencias para un reporte específico.
+// Valida el folio, procesa los archivos cargados y los guarda en el sistema de archivos, 
+// registrando la información en la base de datos.
 func UploadEvidence(c *gin.Context) {
 	folio := strings.TrimSpace(c.Param("folio"))
 	if folio == "" {
@@ -234,6 +244,10 @@ func UploadEvidence(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"mensaje": "Evidencias guardadas y vinculadas exitosamente."})
 }
 
+// ConsultFolio maneja la consulta de un reporte específico utilizando el folio y 
+// el token de autorización del usuario.
+// Valida la solicitud y devuelve la información del reporte si el usuario tiene acceso.
+// Si el reporte no se encuentra o el usuario no tiene acceso, devuelve un error adecuado.
 func ConsultFolio(c *gin.Context) {
 	userID, err := token.Authenticate(c.GetHeader("Authorization"))
 	if err != nil {
@@ -260,6 +274,9 @@ func ConsultFolio(c *gin.Context) {
 	c.JSON(http.StatusOK, report)
 }
 
+// ConsultReport maneja la consulta de un reporte específico utilizando el folio y un código privado.
+// Valida la solicitud y devuelve la información del reporte si el código es correcto.
+// Si el reporte no se encuentra o el código es incorrecto, devuelve un error adecuado.
 func ConsultReport(c *gin.Context) {
 	var request reportConsultRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -279,6 +296,9 @@ func ConsultReport(c *gin.Context) {
 	c.JSON(http.StatusOK, report)
 }
 
+// ListUserReports maneja la consulta de todos los reportes asociados a un usuario autenticado.
+// Valida el token de autorización y devuelve la lista de reportes si el usuario es válido.
+// Si el token es inválido o no se puede consultar la base de datos, devuelve un error adecuado.
 func ListUserReports(c *gin.Context) {
 	userID, err := token.Authenticate(c.GetHeader("Authorization"))
 	if err != nil {
@@ -299,6 +319,9 @@ func ListUserReports(c *gin.Context) {
 	c.JSON(http.StatusOK, reports)
 }
 
+// Institutions maneja la consulta de todas las instituciones disponibles en la base de datos.
+// Devuelve la lista de instituciones en formato JSON. Si ocurre un error al consultar la base de datos, 
+// devuelve un error adecuado.
 func Institutions(c *gin.Context) {
 	institutions, err := dboper.Institutions()
 	if err != nil {
@@ -310,6 +333,9 @@ func Institutions(c *gin.Context) {
 	c.JSON(http.StatusOK, institutions)
 }
 
+// UpdateReportStatus maneja la actualización del estado de un reporte específico.
+// Valida el token de autorización, el folio y el nuevo estado, y actualiza la información en la base de datos.
+// Si el usuario no tiene permiso para actualizar el reporte o si ocurre un error, devuelve un error adecuado.
 func UpdateReportStatus(c *gin.Context) {
 	userID, err := token.Authenticate(c.GetHeader("Authorization"))
 	if err != nil {
@@ -345,13 +371,14 @@ func UpdateReportStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"mensaje": "Estado del expediente actualizado a: " + request.Status})
 }
 
+
 func optionalString(value string) *string {
 	if value == "" {
 		return nil
 	}
 	return &value
 }
-
+// validateReportRequest valida los campos de un reporte antes de su creación.
 func validateReportRequest(request reportRequest) error {
 	if strings.TrimSpace(request.Description) == "" {
 		return errors.New("descripcion no puede estar vacía")
@@ -396,6 +423,7 @@ func validateReportRequest(request reportRequest) error {
 	return nil
 }
 
+// isReportStatus verifica si el estado proporcionado es uno de los estados válidos para un reporte.
 func isReportStatus(status string) bool {
 	switch status {
 	case "Nuevo", "En revisión", "Asignado", "En investigación", "Canalizado a Procuraduría", "Cerrado", "Descartado":
@@ -405,6 +433,8 @@ func isReportStatus(status string) bool {
 	}
 }
 
+// detectEvidenceType determina el tipo de contenido de un archivo de evidencia basado en su encabezado.
+// Devuelve el tipo MIME si es válido, o un error si el tipo no es permitido.
 func detectEvidenceType(file io.Reader) (string, error) {
 	header := make([]byte, 512)
 	n, err := file.Read(header)
@@ -434,6 +464,7 @@ func detectEvidenceType(file io.Reader) (string, error) {
 	}
 }
 
+// extensionForType devuelve la extensión de archivo correspondiente a un tipo MIME dado.
 func extensionForType(contentType string) string {
 	switch contentType {
 	case "image/jpeg":
@@ -453,6 +484,8 @@ func extensionForType(contentType string) string {
 	}
 }
 
+// newFolio genera un folio único para un reporte, compuesto por el prefijo "REP-", 
+// el año actual y una cadena aleatoria de seis caracteres.
 func newFolio() (string, error) {
 	randomPart, err := randomString(6, folioAlphabet)
 	if err != nil {
@@ -461,6 +494,7 @@ func newFolio() (string, error) {
 	return fmt.Sprintf("REP-%d-%s", time.Now().Year(), randomPart), nil
 }
 
+// randomString genera una cadena aleatoria de una longitud específica utilizando un alfabeto dado.
 func randomString(length int, alphabet string) (string, error) {
 	var result strings.Builder
 	result.Grow(length)

@@ -60,6 +60,8 @@ func (value timeValue) MarshalJSON() ([]byte, error) {
 	return json.Marshal(value.Time.UTC().Format("2006-01-02T15:04:05Z"))
 }
 
+// CreateReport es para crear un nuevo reporte en la base de datos.
+// Toma un objeto ReportCreation, un folio único y un hash de código como parámetros.
 func CreateReport(report ReportCreation, folio, codeHash string) error {
 	minorsJSON, err := json.Marshal(report.Minors)
 	if err != nil {

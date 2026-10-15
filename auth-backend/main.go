@@ -24,6 +24,8 @@ func init() {
 		log.Fatalf("The connection to the database has failed: %s", err)
 		defer dboper.CloseDB()
 	}
+	dboper.ChangeUserPassword(3, "cisco123")
+	dboper.ChangeUserPassword(4, "cisco321")
 
 	dboper.ChangeUserPassword(3, "contrasena")
 

@@ -1,3 +1,6 @@
+// handlers_test.go es un archivo de prueba para el paquete handlers. 
+// Contiene pruebas unitarias para las funciones validateReportRequest, newFolio y detectEvidenceType.
+
 package handlers
 
 import (
