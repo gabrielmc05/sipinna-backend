@@ -9,6 +9,17 @@ VALUES (@territorio_id, 'SIPINNA Atizapán de Zaragoza', 'SIPINNA',
         'contacto@sipinna-atizapan.gob.mx', '5588223399', 'Av. Ejemplo 12345');
 SET @institucion_id = LAST_INSERT_ID();
 
+-- Instituciones adicionales para pruebas
+INSERT INTO institucion (id_territorio, nombre, tipo, correo, telefono, direccion)
+VALUES (@territorio_id, 'Procuraduría de Protección de Atizapán', 'Procuraduría',
+        'contacto.procuraduria.prueba@example.com', '5552223344', 'Calle Ficticia 200');
+SET @institucion_procuraduria_id = LAST_INSERT_ID();
+
+INSERT INTO institucion (id_territorio, nombre, tipo, correo, telefono, direccion)
+VALUES (@territorio_id, 'DIF Municipal de Atizapán', 'DIF',
+        'contacto.dif.prueba@example.com', '5553334455', 'Av. Inventada 300');
+SET @institucion_dif_id = LAST_INSERT_ID();
+
 -- Usuario que será Administrador
 INSERT INTO usuario (correo, hash_contrasenna, nombre, apellidos, telefono)
 VALUES ('admin.prueba@sipinna.gob.mx',
@@ -18,6 +29,25 @@ SET @usuario_admin_id = LAST_INSERT_ID();
 
 INSERT INTO administrador (id_usuario, id_institucion, rol)
 VALUES (@usuario_admin_id, @institucion_id, 'Administrador');
+
+-- Alimentadores ficticios vinculados a las instituciones de prueba
+INSERT INTO usuario (correo, hash_contrasenna, nombre, apellidos, telefono)
+VALUES ('alimentador.procuraduria.prueba@example.com',
+        CONVERT('holahola' USING BINARY),
+        'María', 'López García', '5554445566');
+SET @usuario_alimentador_procuraduria_id = LAST_INSERT_ID();
+
+INSERT INTO administrador (id_usuario, id_institucion, rol)
+VALUES (@usuario_alimentador_procuraduria_id, @institucion_procuraduria_id, 'Alimentador');
+
+INSERT INTO usuario (correo, hash_contrasenna, nombre, apellidos, telefono)
+VALUES ('alimentador.dif.prueba@example.com',
+        CONVERT('adiosadios' USING BINARY),
+        'Carlos', 'Hernández Ruiz', '5556667788');
+SET @usuario_alimentador_dif_id = LAST_INSERT_ID();
+
+INSERT INTO administrador (id_usuario, id_institucion, rol)
+VALUES (@usuario_alimentador_dif_id, @institucion_dif_id, 'Alimentador');
 
 -- Usuario que será el Reportante
 INSERT INTO usuario (correo, hash_contrasenna, nombre, apellidos, telefono)

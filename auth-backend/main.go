@@ -24,8 +24,11 @@ func init() {
 		log.Fatalf("The connection to the database has failed: %s", err)
 		defer dboper.CloseDB()
 	}
-	dboper.ChangeUserPassword(3, "cisco123")
-	dboper.ChangeUserPassword(4, "cisco321")
+	dboper.ChangeUserPassword(3, "cisco123") //admin
+	dboper.ChangeUserPassword(4, "cisco321") //alim
+	dboper.ChangeUserPassword(5, "cisco987") //alim
+	dboper.ChangeUserPassword(6, "cisco789") //user
+
 
 
 	//gin.SetMode(gin.ReleaseMode) // No sé por qué no funciona esto
