@@ -268,17 +268,32 @@ var ginLambda *ginadapter.GinLambdaV2
 func init() {
 	router := gin.Default()
 
-	router.GET("/Login/:correo", loginChallenge)                                //listo
-	router.POST("/Login/", loginVerify)                                         // listo
-	router.POST("/Registro/", registro)                                         // listo
-	router.PATCH("/Contrasenna/:correo", requireAuthHeader, cambiarContrasenna) //listo
+	// GET de login,
+	// loginChallenge, recibe correo y regresa un challenge
+	router.GET("/Login/:correo", loginChallenge)
 
-	router.DELETE("/Login/:id", requireAuthHeader, logout)                             // listo
-	router.GET("/Usuario/:correo", requireAuthHeader, getUsuario)                      // listo
-	router.PATCH("/Usuario/:correo", requireAuthHeader, editarUsuario)                 //listo
-	router.PATCH("/Correo/", requireAuthHeader, cambiarCorreo)                         //listo
-	router.POST("/Registrar/Admin/:id", requireAuthHeader, registrarAdmin)             //listo
-	router.POST("/Registrar/Alimentador/:id", requireAuthHeader, registrarAlimentador) //listo
+	// POST de login
+	// loginVerify, segunda funcion login encargada de recibir la respuesta del challenge y enviar el token al cliente
+	router.POST("/Login/", loginVerify)
+
+	// POST de registro
+	// registro, recibe los datos de registro y los envia al servicio de autenticacion para que ahí se cifre y guarde la contraseña
+	router.POST("/Registro/", registro)
+
+	router.PATCH("/Contrasenna/:correo", requireAuthHeader, cambiarContrasenna)
+	router.DELETE("/Login/:id", requireAuthHeader, logout)
+
+	// GET de usuario, getUsuario regresa la info del usuario
+	router.GET("/Usuario/:correo", requireAuthHeader, getUsuario)
+
+	// PATCH de usuario, editUsuario puede modificar (nombre, apellido, tel)
+	router.PATCH("/Usuario/:correo", requireAuthHeader, editarUsuario)
+
+	// PATCH de correo, cambiarCorreo para modificar correo
+	router.PATCH("/Correo/", requireAuthHeader, cambiarCorreo)
+
+	router.POST("/Registrar/Admin/:id", requireAuthHeader, registrarAdmin)
+	router.POST("/Registrar/Alimentador/:id", requireAuthHeader, registrarAlimentador)
 
 	ginLambda = ginadapter.NewV2(router)
 }
