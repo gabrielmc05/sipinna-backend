@@ -3,13 +3,13 @@ INSERT INTO territorio (estado, nombre)
 VALUES ('Estado de México', 'Atizapán de Zaragoza');
 SET @territorio_id = LAST_INSERT_ID();
 
--- Institución
+-- Institución 
 INSERT INTO institucion (id_territorio, nombre, tipo, correo, telefono, direccion)
 VALUES (@territorio_id, 'SIPINNA Atizapán de Zaragoza', 'SIPINNA',
         'contacto@sipinna-atizapan.gob.mx', '5588223399', 'Av. Ejemplo 12345');
 SET @institucion_id = LAST_INSERT_ID();
 
--- Instituciones adicionales para pruebas
+-- Instituciones adicionales para pruebas 
 INSERT INTO institucion (id_territorio, nombre, tipo, correo, telefono, direccion)
 VALUES (@territorio_id, 'Procuraduría de Protección de Atizapán', 'Procuraduría',
         'contacto.procuraduria.prueba@example.com', '5552223344', 'Calle Ficticia 200');
@@ -20,7 +20,7 @@ VALUES (@territorio_id, 'DIF Municipal de Atizapán', 'DIF',
         'contacto.dif.prueba@example.com', '5553334455', 'Av. Inventada 300');
 SET @institucion_dif_id = LAST_INSERT_ID();
 
--- Usuario que será Administrador
+-- Usuario que será Administrador 
 INSERT INTO usuario (correo, hash_contrasenna, nombre, apellidos, telefono)
 VALUES ('admin.prueba@sipinna.gob.mx',
         CONVERT('loooooool' USING BINARY),
@@ -30,7 +30,7 @@ SET @usuario_admin_id = LAST_INSERT_ID();
 INSERT INTO administrador (id_usuario, id_institucion, rol)
 VALUES (@usuario_admin_id, @institucion_id, 'Administrador');
 
--- Alimentadores ficticios vinculados a las instituciones de prueba
+-- Alimentadores ficticios vinculados a las instituciones de prueba 
 INSERT INTO usuario (correo, hash_contrasenna, nombre, apellidos, telefono)
 VALUES ('alimentador.procuraduria.prueba@example.com',
         CONVERT('holahola' USING BINARY),

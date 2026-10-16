@@ -12,6 +12,9 @@ import (
 var (
 	ErrReportNotFound     = sql.ErrNoRows
 	ErrReportAccessDenied = errors.New("user cannot update this report")
+	ErrStaffRoleRequired  = errors.New("user does not have a staff role")
+	ErrAdminRoleRequired  = errors.New("user is not an administrator")
+	ErrFeederRoleRequired = errors.New("target user is not an alimentador")
 )
 
 type Minor struct {
@@ -42,8 +45,19 @@ type ReportCreation struct {
 }
 
 type Evidence struct {
+	ID   uint32 `json:"id_evidencia"`
 	Type string `json:"tipo_archivo"`
 	Path string `json:"ruta"`
+}
+
+type HistoricalReport struct {
+	Folio            string    `json:"folio"`
+	Status           string    `json:"estado"`
+	SubmittedAt      timeValue `json:"fecha_envio"`
+	Description      string    `json:"descripcion"`
+	Address          string    `json:"direccion"`
+	TerritoryID      uint32    `json:"id_territorio"`
+	AssignedFeederID *uint32   `json:"id_alimentador"`
 }
 
 type ReportSummary struct {
@@ -179,6 +193,113 @@ func ListUserReports(userID uint32) ([]ReportSummary, error) {
 		return nil, fmt.Errorf("iterate reports: %w", err)
 	}
 	return reports, nil
+}
+
+func GetStaffRole(userID uint32) (string, error) {
+	var role string
+	err := db.QueryRow(
+		"SELECT rol FROM administrador WHERE id_usuario=?",
+		userID,
+	).Scan(&role)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrStaffRoleRequired
+	}
+	if err != nil {
+		return "", fmt.Errorf("get staff role: %w", err)
+	}
+	return role, nil
+}
+
+func GetReportHistory(userID uint32, status *string, territoryID *uint32, dateOrder string) ([]HistoricalReport, error) {
+	rows, err := db.Query("CALL ObtenerReportes(?,?,?,?)", userID, status, territoryID, dateOrder)
+	if err != nil {
+		return nil, fmt.Errorf("get report history: %w", err)
+	}
+	defer rows.Close()
+
+	reports := make([]HistoricalReport, 0)
+	for rows.Next() {
+		var report HistoricalReport
+		var assignedFeederID sql.NullInt64
+		if err := rows.Scan(
+			&report.Folio,
+			&report.Status,
+			&report.SubmittedAt,
+			&report.Description,
+			&report.Address,
+			&report.TerritoryID,
+			&assignedFeederID,
+		); err != nil {
+			return nil, fmt.Errorf("scan report history row: %w", err)
+		}
+		if assignedFeederID.Valid {
+			id := uint32(assignedFeederID.Int64)
+			report.AssignedFeederID = &id
+		}
+		reports = append(reports, report)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate report history: %w", err)
+	}
+	return reports, nil
+}
+
+func AssignReport(actorID uint32, folio string, feederID uint32) error {
+	var reportFound, actorIsAdmin, targetIsFeeder bool
+	err := db.QueryRow(
+		"CALL AsignarReporte(?,?,?)",
+		actorID,
+		folio,
+		feederID,
+	).Scan(&reportFound, &actorIsAdmin, &targetIsFeeder)
+	if err != nil {
+		return fmt.Errorf("assign report: %w", err)
+	}
+	if !reportFound {
+		return ErrReportNotFound
+	}
+	if !actorIsAdmin {
+		return ErrAdminRoleRequired
+	}
+	if !targetIsFeeder {
+		return ErrFeederRoleRequired
+	}
+	return nil
+}
+
+func GetReportEvidences(userID uint32, folio string) ([]Evidence, error) {
+	rows, err := db.Query("CALL ObtenerEvidencias(?,?)", folio, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get report evidences: %w", err)
+	}
+	defer rows.Close()
+
+	evidences := make([]Evidence, 0)
+	var reportFound, userAuthorized bool
+	for rows.Next() {
+		var evidenceID sql.NullInt64
+		var fileType, path sql.NullString
+		if err := rows.Scan(&reportFound, &userAuthorized, &evidenceID, &fileType, &path); err != nil {
+			return nil, fmt.Errorf("scan report evidence row: %w", err)
+		}
+		if evidenceID.Valid {
+			evidences = append(evidences, Evidence{
+				ID:   uint32(evidenceID.Int64),
+				Type: fileType.String,
+				Path: path.String,
+			})
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate report evidences: %w", err)
+	}
+	if !reportFound {
+		return nil, ErrReportNotFound
+	}
+	if !userAuthorized {
+		return nil, ErrReportAccessDenied
+	}
+	return evidences, nil
 }
 
 func UpdateReportStatus(userID uint32, folio, status string, observations *string) error {

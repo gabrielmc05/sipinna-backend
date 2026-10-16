@@ -49,23 +49,30 @@ func main() {
 		}
 	}()
 
-	router := gin.Default()
+	router := newRouter()
 
+	if err := http.ListenAndServe(":8085", router); err != nil {
+		log.Fatalf("start HTTP server: %v", err)
+	}
+}
+
+func newRouter() *gin.Engine {
+	router := gin.Default()
 	router.Use(corsMiddleware())
 
 	api := router.Group("/api/v1")
 
 	// POST para crear un reporte con la información básica. La evidencia se sube en otro endpoint.
-	// CreateReport es para la creación de un nuevo reporte. Valida la solicitud, genera un folio único 
+	// CreateReport es para la creación de un nuevo reporte. Valida la solicitud, genera un folio único
 	// y un código privado, y guarda el reporte en la base de datos.
 	api.POST("/reportes", handlers.CreateReport)
 
 	// POST para subir la evidencia
 	// UploadEvidence maneja la carga de evidencias para un reporte específico.
-	// Valida el folio, procesa los archivos cargados y los guarda en el sistema de archivos, 
+	// Valida el folio, procesa los archivos cargados y los guarda en el sistema de archivos,
 	// registrando la información en la base de datos.
 	api.POST("/reportes/:folio/evidencias", handlers.UploadEvidence)
-	
+
 	// GET para consultar un solo reporte con su folio y codigo
 	// ConsultReport maneja la consulta de un reporte específico utilizando el folio y un código privado.
 	// Valida la solicitud y devuelve la información del reporte si el código es correcto.
@@ -73,12 +80,25 @@ func main() {
 	api.GET("/reportes/consultar", handlers.ConsultReport)
 
 	// GET para consultar reporte solo con folio pero con usuario autenticado
-	// ConsultFolio maneja la consulta de un reporte específico utilizando el folio y 
+	// ConsultFolio maneja la consulta de un reporte específico utilizando el folio y
 	// el token de autorización del usuario.
 	// Valida la solicitud y devuelve la información del reporte si el usuario tiene acceso.
 	// Si el reporte no se encuentra o el usuario no tiene acceso, devuelve un error adecuado.
 	api.GET("/reportes/:folio", handlers.ConsultFolio)
-	
+
+	// GET para consultar el histórico global (administradores) o los reportes asignados (alimentadores).
+	// acepta filtros estado, id_territorio y orden_fecha=asc|desc. El administrador ve todos los reportes,
+	// el alimentador, solo los asignados a su ID.
+	api.GET("/reportes/historico", handlers.ReportHistory)
+
+	// POST para asignar un reporte a un alimentador.
+	// recibe {"id_alimentador": 123}. Solo un administrador puede asignar, y el ID debe pertenecer 
+	// a un alimentador. No se restringe la asignación por institución
+	api.POST("/reportes/asignar/:folio", handlers.AssignReport)
+
+	// GET para obtener las evidencias de un reporte con autorización de personal.
+	api.GET("/reportes/:folio/evidencias", handlers.GetEvidence)
+
 	// GET para consultar la lista de reporte de un usuario en específico
 	// ListUserReports maneja la consulta de todos los reportes asociados a un usuario autenticado.
 	// Valida el token de autorización y devuelve la lista de reportes si el usuario es válido.
@@ -93,11 +113,9 @@ func main() {
 
 	// GET de lista de instituciones
 	// Institutions maneja la consulta de todas las instituciones disponibles en la base de datos.
-	// Devuelve la lista de instituciones en formato JSON. Si ocurre un error al consultar la base de datos, 
+	// Devuelve la lista de instituciones en formato JSON. Si ocurre un error al consultar la base de datos,
 	// devuelve un error adecuado.
 	api.GET("/instituciones", handlers.Institutions)
 
-	if err := http.ListenAndServe(":8085", router); err != nil {
-		log.Fatalf("start HTTP server: %v", err)
-	}
+	return router
 }

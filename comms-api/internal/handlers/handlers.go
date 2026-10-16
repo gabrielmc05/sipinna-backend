@@ -18,6 +18,7 @@ import (
 	"net/mail"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -61,6 +62,10 @@ type reportConsultRequest struct {
 type statusRequest struct {
 	Status       string  `json:"estado" binding:"required"`
 	Observations *string `json:"observaciones"`
+}
+
+type assignReportRequest struct {
+	FeederID uint32 `json:"id_alimentador" binding:"required"`
 }
 
 // CreateReport maneja la creación de un nuevo reporte.
@@ -320,6 +325,127 @@ func ListUserReports(c *gin.Context) {
 	c.JSON(http.StatusOK, reports)
 }
 
+// ReportHistory devuelve el histórico global para administradores y solo los casos asignados para alimentadores.
+func ReportHistory(c *gin.Context) {
+	userID, err := authenticateStaff(c)
+	if err != nil {
+		return
+	}
+	role, err := dboper.GetStaffRole(userID)
+	if err != nil {
+		respondStaffRoleError(c, err)
+		return
+	}
+	if role != "Administrador" && role != "Alimentador" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "rol sin permisos para consultar el histórico"})
+		return
+	}
+
+	var status *string
+	if value := strings.TrimSpace(c.Query("estado")); value != "" {
+		if !isHistoryStatus(value) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "estado de expediente inválido"})
+			return
+		}
+		status = &value
+	}
+
+	var territoryID *uint32
+	if value := c.Query("id_territorio"); value != "" {
+		parsedID, err := strconv.ParseUint(value, 10, 32)
+		if err != nil || parsedID == 0 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "id_territorio debe ser un entero positivo"})
+			return
+		}
+		parsedTerritoryID := uint32(parsedID)
+		territoryID = &parsedTerritoryID
+	}
+
+	dateOrder := strings.ToLower(strings.TrimSpace(c.DefaultQuery("orden_fecha", "desc")))
+	if dateOrder != "asc" && dateOrder != "desc" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "orden_fecha debe ser asc o desc"})
+		return
+	}
+	reports, err := dboper.GetReportHistory(userID, status, territoryID, dateOrder)
+	if err != nil {
+		log.Printf("get report history: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no fue posible consultar el histórico"})
+		return
+	}
+	c.JSON(http.StatusOK, reports)
+}
+
+// AssignReport asigna un reporte a un alimentador; la base de datos valida el rol de ambos usuarios.
+func AssignReport(c *gin.Context) {
+	userID, err := authenticateStaff(c)
+	if err != nil {
+		return
+	}
+	var request assignReportRequest
+	if err := c.ShouldBindJSON(&request); err != nil || request.FeederID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id_alimentador debe ser un entero positivo"})
+		return
+	}
+
+	err = dboper.AssignReport(userID, c.Param("folio"), request.FeederID)
+	switch {
+	case errors.Is(err, dboper.ErrReportNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"error": "reporte no encontrado"})
+	case errors.Is(err, dboper.ErrAdminRoleRequired):
+		c.JSON(http.StatusForbidden, gin.H{"error": "solo un administrador puede asignar reportes"})
+	case errors.Is(err, dboper.ErrFeederRoleRequired):
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id_alimentador no corresponde a un alimentador registrado"})
+	case err != nil:
+		log.Printf("assign report: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no fue posible asignar el reporte"})
+	default:
+		c.JSON(http.StatusOK, gin.H{"mensaje": "Reporte asignado correctamente"})
+	}
+}
+
+// GetEvidence devuelve las evidencias si el usuario es administrador o tiene asignado el reporte.
+func GetEvidence(c *gin.Context) {
+	userID, err := authenticateStaff(c)
+	if err != nil {
+		return
+	}
+	evidences, err := dboper.GetReportEvidences(userID, c.Param("folio"))
+	switch {
+	case errors.Is(err, dboper.ErrReportNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"error": "reporte no encontrado"})
+	case errors.Is(err, dboper.ErrReportAccessDenied):
+		c.JSON(http.StatusForbidden, gin.H{"error": "no tienes permiso para consultar las evidencias"})
+	case err != nil:
+		log.Printf("get report evidences: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no fue posible consultar las evidencias"})
+	default:
+		c.JSON(http.StatusOK, evidences)
+	}
+}
+
+func authenticateStaff(c *gin.Context) (uint32, error) {
+	userID, err := token.Authenticate(c.GetHeader("Authorization"))
+	if err == nil {
+		return userID, nil
+	}
+	if errors.Is(err, token.ErrInvalidToken) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "token de autorización inválido o faltante"})
+		return 0, err
+	}
+	log.Printf("authenticate staff request: %v", err)
+	c.JSON(http.StatusInternalServerError, gin.H{"error": "no fue posible validar la autorización"})
+	return 0, err
+}
+
+func respondStaffRoleError(c *gin.Context, err error) {
+	if errors.Is(err, dboper.ErrStaffRoleRequired) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "se requiere rol de administrador o alimentador"})
+		return
+	}
+	log.Printf("get staff role: %v", err)
+	c.JSON(http.StatusInternalServerError, gin.H{"error": "no fue posible validar el rol"})
+}
+
 // Institutions maneja la consulta de todas las instituciones disponibles en la base de datos.
 // Devuelve la lista de instituciones en formato JSON. Si ocurre un error al consultar la base de datos,
 // devuelve un error adecuado.
@@ -428,6 +554,15 @@ func validateReportRequest(request reportRequest) error {
 func isReportStatus(status string) bool {
 	switch status {
 	case "Nuevo", "En revisión", "Asignado", "En investigación", "Canalizado a Procuraduría", "Cerrado", "Descartado":
+		return true
+	default:
+		return false
+	}
+}
+
+func isHistoryStatus(status string) bool {
+	switch status {
+	case "Registrado", "En revisión", "En seguimiento", "Canalizado", "Concluido", "Archivado", "Cancelado", "Reincidente":
 		return true
 	default:
 		return false

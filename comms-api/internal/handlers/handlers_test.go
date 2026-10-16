@@ -42,6 +42,23 @@ func TestNewFolioFormat(t *testing.T) {
 	}
 }
 
+func TestReportStatusValidation(t *testing.T) {
+	for _, status := range []string{"Registrado", "En revisión", "En seguimiento", "Canalizado", "Concluido", "Archivado", "Cancelado", "Reincidente"} {
+		if !isHistoryStatus(status) {
+			t.Errorf("history status %q was rejected", status)
+		}
+	}
+	for _, status := range []string{"", "inventado"} {
+		if isHistoryStatus(status) {
+			t.Errorf("invalid history status %q was accepted", status)
+		}
+	}
+
+	if !isReportStatus("Canalizado a Procuraduría") {
+		t.Error("existing report status validation changed")
+	}
+}
+
 func TestDetectEvidenceType(t *testing.T) {
 	contentType, err := detectEvidenceType(strings.NewReader("\x89PNG\r\n\x1a\n" + strings.Repeat("\x00", 16)))
 	if err != nil {

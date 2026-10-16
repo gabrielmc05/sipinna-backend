@@ -3,6 +3,9 @@ DROP PROCEDURE IF EXISTS RegistrarAdministrador;
 DROP PROCEDURE IF EXISTS RegistrarAlimentador;
 DROP PROCEDURE IF EXISTS CrearReporte;
 DROP PROCEDURE IF EXISTS AgregarEvidencias;
+DROP PROCEDURE IF EXISTS ObtenerReportes;
+DROP PROCEDURE IF EXISTS AsignarReporte;
+DROP PROCEDURE IF EXISTS ObtenerEvidencias;
 DROP PROCEDURE IF EXISTS ConsultarReporte;
 DROP PROCEDURE IF EXISTS ListarReportesUsuario;
 DROP PROCEDURE IF EXISTS ActualizarEstadoReporte;
@@ -338,6 +341,126 @@ BEGIN
 		WHERE folio = p_folio;
 	END IF;
 	SELECT v_reporte_encontrado, v_usuario_autorizado;
+END
+//
+DELIMITER ;
+
+DELIMITER //
+CREATE PROCEDURE ObtenerReportes (
+	IN p_id_usuario INT,
+	IN p_estado VARCHAR(40),
+	IN p_id_territorio INT,
+	IN p_orden_fecha VARCHAR(4)
+)
+BEGIN
+	DECLARE v_rol VARCHAR(20) DEFAULT NULL;
+
+	SET v_rol = (
+		SELECT rol
+		FROM administrador
+		WHERE id_usuario = p_id_usuario
+		LIMIT 1
+	);
+
+	IF v_rol IS NULL OR v_rol NOT IN ('Administrador', 'Alimentador') THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Usuario sin rol de personal autorizado.';
+	END IF;
+	IF p_orden_fecha NOT IN ('asc', 'desc') THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Orden de fecha inválido.';
+	END IF;
+
+	SELECT
+		r.folio,
+		x.estado,
+		r.fecha_reporte,
+		r.descripcion,
+		COALESCE(u.direccion_texto, ''),
+		u.id_territorio,
+		x.id_usuario
+	FROM reporte AS r
+	INNER JOIN expediente AS x ON x.folio = r.folio
+	INNER JOIN ubicacion AS u ON u.folio = r.folio
+	WHERE (p_estado IS NULL OR x.estado = p_estado)
+		AND (p_id_territorio IS NULL OR u.id_territorio = p_id_territorio)
+		AND (v_rol = 'Administrador' OR (v_rol = 'Alimentador' AND x.id_usuario = p_id_usuario))
+	ORDER BY
+		CASE WHEN p_orden_fecha = 'asc' THEN r.fecha_reporte END ASC,
+		CASE WHEN p_orden_fecha = 'desc' THEN r.fecha_reporte END DESC,
+		r.folio ASC;
+END
+//
+DELIMITER ;
+
+DELIMITER //
+CREATE PROCEDURE AsignarReporte (
+	IN p_id_administrador INT,
+	IN p_folio CHAR(15),
+	IN p_id_alimentador INT
+)
+BEGIN
+	DECLARE v_reporte_encontrado BOOLEAN DEFAULT FALSE;
+	DECLARE v_es_administrador BOOLEAN DEFAULT FALSE;
+	DECLARE v_es_alimentador BOOLEAN DEFAULT FALSE;
+
+	SET v_reporte_encontrado = EXISTS (
+		SELECT 1 FROM expediente WHERE folio = p_folio
+	);
+	SET v_es_administrador = EXISTS (
+		SELECT 1
+		FROM administrador
+		WHERE id_usuario = p_id_administrador AND rol = 'Administrador'
+	);
+	SET v_es_alimentador = EXISTS (
+		SELECT 1
+		FROM administrador
+		WHERE id_usuario = p_id_alimentador AND rol = 'Alimentador'
+	);
+
+	IF v_reporte_encontrado AND v_es_administrador AND v_es_alimentador THEN
+		UPDATE expediente
+		SET id_usuario = p_id_alimentador
+		WHERE folio = p_folio;
+	END IF;
+
+	SELECT v_reporte_encontrado, v_es_administrador, v_es_alimentador;
+END
+//
+DELIMITER ;
+
+DELIMITER //
+CREATE PROCEDURE ObtenerEvidencias (
+	IN p_folio CHAR(15),
+	IN p_id_usuario INT
+)
+BEGIN
+	DECLARE v_reporte_encontrado BOOLEAN DEFAULT FALSE;
+	DECLARE v_usuario_autorizado BOOLEAN DEFAULT FALSE;
+
+	SET v_reporte_encontrado = EXISTS (
+		SELECT 1 FROM reporte WHERE folio = p_folio
+	);
+	SET v_usuario_autorizado = EXISTS (
+		SELECT 1
+		FROM administrador
+		WHERE id_usuario = p_id_usuario
+			AND rol = 'Administrador'
+	) OR EXISTS (
+		SELECT 1
+		FROM expediente AS x
+		INNER JOIN administrador AS a ON a.id_usuario = x.id_usuario
+		WHERE x.folio = p_folio
+			AND x.id_usuario = p_id_usuario
+			AND a.rol = 'Alimentador'
+	);
+
+	SELECT
+		v_reporte_encontrado,
+		v_usuario_autorizado,
+		e.id_evidencia,
+		e.tipo_archivo,
+		e.ruta
+	FROM (SELECT 1) AS solicitud
+	LEFT JOIN evidencia AS e ON e.folio = p_folio;
 END
 //
 DELIMITER ;

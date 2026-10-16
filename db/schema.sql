@@ -194,7 +194,7 @@ CREATE TABLE `expediente` (
   `folio` char(15) NOT NULL,
   `id_institucion` int(11) NOT NULL,
   `id_usuario` int(11) DEFAULT NULL,
-  `estado` enum('Nuevo','En revisión','Asignado','En investigación','Canalizado a Procuraduría','Cerrado','Descartado') NOT NULL DEFAULT 'Nuevo',
+  `estado` enum('Registrado','En revisión','En seguimiento','Canalizado','Concluido','Archivado','Cancelado', 'Reincidente') NOT NULL DEFAULT 'Registrado',
   `fecha_inicio` timestamp NOT NULL DEFAULT current_timestamp(),
   `fecha_ultima_actualizacion` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `observaciones` text DEFAULT NULL,
