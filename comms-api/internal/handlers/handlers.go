@@ -1,5 +1,5 @@
-// handlers.go es para definir los controladores de la API REST relacionados con los reportes, 
-// incluyendo la creación, consulta y actualización de reportes, así como la carga de evidencias 
+// handlers.go es para definir los controladores de la API REST relacionados con los reportes,
+// incluyendo la creación, consulta y actualización de reportes, así como la carga de evidencias
 // y la obtención de instituciones.
 
 package handlers
@@ -43,6 +43,7 @@ type reportRequest struct {
 	AdultInvolved   bool           `json:"hay_adulto_involucrado"`
 	Location        locationInput  `json:"ubicacion" binding:"required"`
 	Minors          []dboper.Minor `json:"menores" binding:"required,min=1"`
+	Tags            []dboper.Tag   `json:"etiquetas" binding:"required"`
 }
 
 type locationInput struct {
@@ -62,8 +63,8 @@ type statusRequest struct {
 	Observations *string `json:"observaciones"`
 }
 
-// CreateReport maneja la creación de un nuevo reporte. 
-// Valida la solicitud, genera un folio único y un código privado, 
+// CreateReport maneja la creación de un nuevo reporte.
+// Valida la solicitud, genera un folio único y un código privado,
 // y guarda el reporte en la base de datos.
 func CreateReport(c *gin.Context) {
 	var request reportRequest
@@ -115,7 +116,7 @@ func CreateReport(c *gin.Context) {
 		Minors:          request.Minors,
 	}
 	var folio string
-	for attempt := 0; attempt < 3; attempt++ {
+	for range 3 {
 		folio, err = newFolio()
 		if err != nil {
 			log.Printf("generate report folio: %v", err)
@@ -145,7 +146,7 @@ func CreateReport(c *gin.Context) {
 }
 
 // UploadEvidence maneja la carga de evidencias para un reporte específico.
-// Valida el folio, procesa los archivos cargados y los guarda en el sistema de archivos, 
+// Valida el folio, procesa los archivos cargados y los guarda en el sistema de archivos,
 // registrando la información en la base de datos.
 func UploadEvidence(c *gin.Context) {
 	folio := strings.TrimSpace(c.Param("folio"))
@@ -244,7 +245,7 @@ func UploadEvidence(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"mensaje": "Evidencias guardadas y vinculadas exitosamente."})
 }
 
-// ConsultFolio maneja la consulta de un reporte específico utilizando el folio y 
+// ConsultFolio maneja la consulta de un reporte específico utilizando el folio y
 // el token de autorización del usuario.
 // Valida la solicitud y devuelve la información del reporte si el usuario tiene acceso.
 // Si el reporte no se encuentra o el usuario no tiene acceso, devuelve un error adecuado.
@@ -320,7 +321,7 @@ func ListUserReports(c *gin.Context) {
 }
 
 // Institutions maneja la consulta de todas las instituciones disponibles en la base de datos.
-// Devuelve la lista de instituciones en formato JSON. Si ocurre un error al consultar la base de datos, 
+// Devuelve la lista de instituciones en formato JSON. Si ocurre un error al consultar la base de datos,
 // devuelve un error adecuado.
 func Institutions(c *gin.Context) {
 	institutions, err := dboper.Institutions()
@@ -371,13 +372,13 @@ func UpdateReportStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"mensaje": "Estado del expediente actualizado a: " + request.Status})
 }
 
-
 func optionalString(value string) *string {
 	if value == "" {
 		return nil
 	}
 	return &value
 }
+
 // validateReportRequest valida los campos de un reporte antes de su creación.
 func validateReportRequest(request reportRequest) error {
 	if strings.TrimSpace(request.Description) == "" {
@@ -484,7 +485,7 @@ func extensionForType(contentType string) string {
 	}
 }
 
-// newFolio genera un folio único para un reporte, compuesto por el prefijo "REP-", 
+// newFolio genera un folio único para un reporte, compuesto por el prefijo "REP-",
 // el año actual y una cadena aleatoria de seis caracteres.
 func newFolio() (string, error) {
 	randomPart, err := randomString(6, folioAlphabet)

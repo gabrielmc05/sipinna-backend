@@ -20,6 +20,11 @@ type Minor struct {
 	PhysicalDetails string `json:"descripcion_fisica"`
 }
 
+type Tag struct {
+	Name string `json:"nombre_etiqueta" binding:"required,max=50"`
+	Type string `json:"tipo" binding:"required"`
+}
+
 type ReportCreation struct {
 	UserID          *uint32
 	ContactEmail    *string
@@ -33,6 +38,7 @@ type ReportCreation struct {
 	Address         string
 	TerritoryID     uint32
 	Minors          []Minor
+	Tags            []Tag
 }
 
 type Evidence struct {
@@ -87,6 +93,11 @@ func CreateReport(report ReportCreation, folio, codeHash string) error {
 	if err != nil {
 		return fmt.Errorf("create report: %w", err)
 	}
+
+	for _, tag := range report.Tags {
+		db.Exec("CALL AsignarEtiquetaNuevoReporte(?,?,?)", folio, tag)
+	}
+
 	return nil
 }
 

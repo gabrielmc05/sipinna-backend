@@ -9,6 +9,7 @@ DROP PROCEDURE IF EXISTS ActualizarEstadoReporte;
 DROP FUNCTION IF EXISTS EsAdministrador;
 DROP FUNCTION IF EXISTS ExisteUsuario;
 DROP PROCEDURE IF EXISTS ConsultarFolio; 
+DROP FUNCTION IF EXISTS AsignarEtiquetaNuevoReporte;
 
 -- Procedimientos y funciones
 DELIMITER //
@@ -348,4 +349,40 @@ BEGIN
     RETURN EXISTS ( 
 		SELECT 1 FROM usuario WHERE id_usuario = f_id_usuario);
 END; //
+DELIMITER ;
+
+-- Este solo se usará al asignar etiquetas a nuevos reportes
+DELIMITER //
+CREATE PROCEDURE AsignarEtiquetaNuevoReporte(
+	IN p_folio CHAR(15),
+	IN p_nombre_etiqueta VARCHAR(50),
+	IN p_tipo VARCHAR(20)
+)
+BEGIN
+	DECLARE v_etiqueta_encontrada BOOLEAN DEFAULT FALSE;
+	DECLARE v_reporte_encontrado BOOLEAN DEFAULT FALSE;
+
+	IF p_tipo NOT IN ('Categoria','Prioridad','Riesgo','Observacion'
+	) THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Tipo de etiqueta inválido.';
+	END IF;
+	
+	SET v_etiqueta_encontrada = EXISTS (
+		SELECT 1 FROM etiqueta
+			WHERE nombre_etiqueta = p_nombre_etiqueta
+			AND tipo = p_tipo
+			AND es_activo = TRUE
+	);
+	
+	SET v_reporte_encontrado = EXISTS (
+		SELECT 1 FROM reporte WHERE folio = p_folio 
+	);
+	
+	IF v_etiqueta_encontrada AND v_reporte_encontrado THEN
+		INSERT INTO reporteetiqueta (folio, nombre_etiqueta, tipo)
+		VALUES (p_folio, p_nombre_etiqueta, p_tipo);
+	END IF;
+	
+	SELECT folio, nombre_etiqueta, tipo FROM reporteetiqueta; 
+END //
 DELIMITER ;
