@@ -35,7 +35,7 @@ CREATE TABLE `usuario` (
 
 CREATE TABLE `etiqueta` (
   `nombre_etiqueta` varchar(50) CHARACTER SET utf8mb3 COLLATE utf8mb3_uca1400_ai_ci NOT NULL,
-  `tipo` enum('Categoria','Prioridad','Riesgo') NOT NULL,
+  `tipo` enum('Categoria','Prioridad','Riesgo','Observacion') NOT NULL,
   `es_activo` tinyint(1) NOT NULL DEFAULT 1,
   PRIMARY KEY (`nombre_etiqueta`,`tipo`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
