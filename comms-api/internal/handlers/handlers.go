@@ -69,6 +69,28 @@ type assignReportRequest struct {
 	FeederID uint32 `json:"id_alimentador" binding:"required"`
 }
 
+type institutionCreateRequest struct {
+	TerritoryID uint32  `json:"id_territorio" binding:"required"`
+	Name        string  `json:"nombre" binding:"required"`
+	Type        string  `json:"tipo" binding:"required"`
+	Email       *string `json:"correo"`
+	Phone       *string `json:"telefono"`
+	Address     *string `json:"direccion"`
+}
+
+type institutionUpdateRequest struct {
+	TerritoryID *uint32 `json:"id_territorio"`
+	Name        *string `json:"nombre"`
+	Type        *string `json:"tipo"`
+	Email       *string `json:"correo"`
+	Phone       *string `json:"telefono"`
+	Address     *string `json:"direccion"`
+}
+
+type institutionStatusRequest struct {
+	Active *bool `json:"es_activo" binding:"required"`
+}
+
 // CreateReport maneja la creación de un nuevo reporte.
 // Valida la solicitud, genera un folio único y un código privado,
 // y guarda el reporte en la base de datos.
@@ -549,6 +571,222 @@ func Institutions(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, institutions)
+}
+
+// InstitutionByID devuelve el detalle de una institución.
+func InstitutionByID(c *gin.Context) {
+	id, ok := parseInstitutionID(c)
+	if !ok {
+		return
+	}
+	institution, err := dboper.InstitutionByID(id)
+	if errors.Is(err, dboper.ErrInstitutionNotFound) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "institución no encontrada"})
+		return
+	}
+	if err != nil {
+		log.Printf("get institution: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no fue posible consultar la institución"})
+		return
+	}
+	c.JSON(http.StatusOK, institution)
+}
+
+// CreateInstitution registra una institución; solo los administradores pueden realizar esta operación.
+func CreateInstitution(c *gin.Context) {
+	if !requireAdministrator(c) {
+		return
+	}
+	var request institutionCreateRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "datos de institución inválidos"})
+		return
+	}
+	request.Name = strings.TrimSpace(request.Name)
+	request.Type = strings.TrimSpace(request.Type)
+	if request.Name == "" || request.Type == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "nombre y tipo son obligatorios"})
+		return
+	}
+	if err := validateInstitutionFields(request.Name, request.Type, request.Email, request.Phone, request.Address); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if request.TerritoryID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id_territorio debe ser un entero positivo"})
+		return
+	}
+
+	id, err := dboper.CreateInstitution(dboper.InstitutionInput{
+		TerritoryID: request.TerritoryID,
+		Name:        request.Name,
+		Type:        request.Type,
+		Email:       request.Email,
+		Phone:       request.Phone,
+		Address:     request.Address,
+	})
+	switch {
+	case errors.Is(err, dboper.ErrDuplicateInstitution):
+		c.JSON(http.StatusConflict, gin.H{"error": "ya existe una institución con ese nombre, tipo y territorio"})
+	case errors.Is(err, dboper.ErrInstitutionTerritoryNotFound):
+		c.JSON(http.StatusBadRequest, gin.H{"error": "el territorio indicado no existe"})
+	case err != nil:
+		log.Printf("create institution: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no fue posible registrar la institución"})
+	default:
+		c.JSON(http.StatusCreated, gin.H{"id_institucion": id, "mensaje": "Institución registrada correctamente"})
+	}
+}
+
+// UpdateInstitution aplica los campos enviados sin modificar los que se omitan.
+func UpdateInstitution(c *gin.Context) {
+	if !requireAdministrator(c) {
+		return
+	}
+	id, ok := parseInstitutionID(c)
+	if !ok {
+		return
+	}
+	var request institutionUpdateRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "datos de institución inválidos"})
+		return
+	}
+	if request.TerritoryID == nil && request.Name == nil && request.Type == nil &&
+		request.Email == nil && request.Phone == nil && request.Address == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "se requiere al menos un campo para actualizar"})
+		return
+	}
+	if request.Name != nil {
+		trimmed := strings.TrimSpace(*request.Name)
+		request.Name = &trimmed
+	}
+	if request.Type != nil {
+		trimmed := strings.TrimSpace(*request.Type)
+		request.Type = &trimmed
+	}
+	if request.Name != nil && *request.Name == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "nombre no puede quedar vacío"})
+		return
+	}
+	if request.Type != nil && *request.Type == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "tipo no puede quedar vacío"})
+		return
+	}
+	if err := validateInstitutionFields(optionalValue(request.Name), optionalValue(request.Type), request.Email, request.Phone, request.Address); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if request.TerritoryID != nil && *request.TerritoryID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id_territorio debe ser un entero positivo"})
+		return
+	}
+
+	err := dboper.UpdateInstitution(id, dboper.InstitutionUpdate{
+		TerritoryID: request.TerritoryID,
+		Name:        request.Name,
+		Type:        request.Type,
+		Email:       request.Email,
+		Phone:       request.Phone,
+		Address:     request.Address,
+	})
+	switch {
+	case errors.Is(err, dboper.ErrInstitutionNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"error": "institución no encontrada"})
+	case errors.Is(err, dboper.ErrDuplicateInstitution):
+		c.JSON(http.StatusConflict, gin.H{"error": "ya existe una institución con ese nombre, tipo y territorio"})
+	case errors.Is(err, dboper.ErrInstitutionTerritoryNotFound):
+		c.JSON(http.StatusBadRequest, gin.H{"error": "el territorio indicado no existe"})
+	case err != nil:
+		log.Printf("update institution: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no fue posible actualizar la institución"})
+	default:
+		c.JSON(http.StatusOK, gin.H{"mensaje": "Institución actualizada correctamente"})
+	}
+}
+
+// UpdateInstitutionStatus activa o desactiva una institución sin eliminarla.
+func UpdateInstitutionStatus(c *gin.Context) {
+	if !requireAdministrator(c) {
+		return
+	}
+	id, ok := parseInstitutionID(c)
+	if !ok {
+		return
+	}
+	var request institutionStatusRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "es_activo debe ser true o false"})
+		return
+	}
+	if err := dboper.UpdateInstitutionStatus(id, *request.Active); err != nil {
+		if errors.Is(err, dboper.ErrInstitutionNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "institución no encontrada"})
+			return
+		}
+		log.Printf("update institution status: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no fue posible actualizar el estado de la institución"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"es_activo": *request.Active, "mensaje": "Estado de la institución actualizado correctamente"})
+}
+
+func parseInstitutionID(c *gin.Context) (uint32, bool) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || id == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id de institución inválido"})
+		return 0, false
+	}
+	return uint32(id), true
+}
+
+func requireAdministrator(c *gin.Context) bool {
+	userID, err := authenticateStaff(c)
+	if err != nil {
+		return false
+	}
+	role, err := dboper.GetStaffRole(userID)
+	if err != nil {
+		respondStaffRoleError(c, err)
+		return false
+	}
+	if role != "Administrador" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "solo un administrador puede gestionar instituciones"})
+		return false
+	}
+	return true
+}
+
+func validateInstitutionFields(name, institutionType string, email, phone, address *string) error {
+	if name != "" && len(name) > 50 {
+		return errors.New("nombre debe tener máximo 50 caracteres")
+	}
+	if institutionType != "" && len(institutionType) > 50 {
+		return errors.New("tipo debe tener máximo 50 caracteres")
+	}
+	if email != nil && strings.TrimSpace(*email) != "" {
+		if len(*email) > 254 {
+			return errors.New("correo debe tener máximo 254 caracteres")
+		}
+		parsed, err := mail.ParseAddress(*email)
+		if err != nil || parsed.Address != *email {
+			return errors.New("correo inválido")
+		}
+	}
+	if phone != nil && len(*phone) > 50 {
+		return errors.New("telefono debe tener máximo 50 caracteres")
+	}
+	if address != nil && len(*address) > 100 {
+		return errors.New("direccion debe tener máximo 100 caracteres")
+	}
+	return nil
+}
+
+func optionalValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 // UpdateReportStatus maneja la actualización del estado de un reporte específico.

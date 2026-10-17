@@ -80,7 +80,7 @@ func newRouter() *gin.Engine {
 	api.GET("/reportes/consultar", handlers.ConsultReport)
 
 	// GET para obtener reportes geolocalizados visibles al usuario institucional autenticado.
-	// devuelve folio, coordenadas, estado del expediente y datos del territorio. 
+	// devuelve folio, coordenadas, estado del expediente y datos del territorio.
 	// Requiere JWT, los administradores ven todos los reportes y los alimentadores solo los asignados.
 	api.GET("/mapa/reportes", handlers.GetMapReports)
 
@@ -128,6 +128,10 @@ func newRouter() *gin.Engine {
 	// Devuelve la lista de instituciones en formato JSON. Si ocurre un error al consultar la base de datos,
 	// devuelve un error adecuado.
 	api.GET("/instituciones", handlers.Institutions)
+	api.GET("/instituciones/:id", handlers.InstitutionByID)
+	api.POST("/instituciones", handlers.CreateInstitution)
+	api.PATCH("/instituciones/:id", handlers.UpdateInstitution)
+	api.PATCH("/instituciones/:id/estado", handlers.UpdateInstitutionStatus)
 
 	return router
 }

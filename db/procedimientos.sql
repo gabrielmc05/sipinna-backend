@@ -11,6 +11,11 @@ DROP PROCEDURE IF EXISTS ObtenerTerritorios;
 DROP PROCEDURE IF EXISTS ObtenerTerritorioId;
 DROP PROCEDURE IF EXISTS ObtenerAlimentadores;
 DROP PROCEDURE IF EXISTS ObtenerPuntosMapa;
+DROP PROCEDURE IF EXISTS ObtenerInstituciones;
+DROP PROCEDURE IF EXISTS ObtenerInstitucionPorId;
+DROP PROCEDURE IF EXISTS RegistrarInstitucion;
+DROP PROCEDURE IF EXISTS ActualizarInstitucion;
+DROP PROCEDURE IF EXISTS ActualizarEstadoInstitucion;
 DROP PROCEDURE IF EXISTS ConsultarReporte;
 DROP PROCEDURE IF EXISTS ConsultarReportePersonal;
 DROP PROCEDURE IF EXISTS ListarReportesUsuario;
@@ -617,6 +622,173 @@ BEGIN
 	WHERE v_rol = 'Administrador'
 		OR (v_rol = 'Alimentador' AND x.id_usuario = p_id_usuario)
 	ORDER BY r.fecha_reporte DESC, r.folio ASC;
+END
+//
+DELIMITER ;
+
+DELIMITER //
+CREATE PROCEDURE ObtenerInstituciones ()
+BEGIN
+	SELECT
+		i.id_institucion,
+		i.nombre,
+		i.tipo,
+		i.correo,
+		i.telefono,
+		i.direccion,
+		i.es_activo,
+		t.id_territorio,
+		t.estado,
+		t.nombre
+	FROM institucion AS i
+	INNER JOIN territorio AS t ON t.id_territorio = i.id_territorio
+	ORDER BY i.nombre ASC, i.id_institucion ASC;
+END
+//
+DELIMITER ;
+
+DELIMITER //
+CREATE PROCEDURE ObtenerInstitucionPorId (
+	IN p_id_institucion INT
+)
+BEGIN
+	SELECT
+		i.id_institucion,
+		i.nombre,
+		i.tipo,
+		i.correo,
+		i.telefono,
+		i.direccion,
+		i.es_activo,
+		t.id_territorio,
+		t.estado,
+		t.nombre
+	FROM institucion AS i
+	INNER JOIN territorio AS t ON t.id_territorio = i.id_territorio
+	WHERE i.id_institucion = p_id_institucion;
+END
+//
+DELIMITER ;
+
+DELIMITER //
+CREATE PROCEDURE RegistrarInstitucion (
+	IN p_id_territorio INT,
+	IN p_nombre VARCHAR(50),
+	IN p_tipo VARCHAR(50),
+	IN p_correo VARCHAR(254),
+	IN p_telefono VARCHAR(50),
+	IN p_direccion VARCHAR(100)
+)
+BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM territorio WHERE id_territorio = p_id_territorio
+	) THEN
+		SIGNAL SQLSTATE '45000'
+			SET MESSAGE_TEXT = 'INSTITUTION_TERRITORY_NOT_FOUND';
+	END IF;
+	IF EXISTS (
+		SELECT 1 FROM institucion
+		WHERE id_territorio = p_id_territorio
+			AND nombre = p_nombre
+			AND tipo = p_tipo
+	) THEN
+		SIGNAL SQLSTATE '45000'
+			SET MESSAGE_TEXT = 'INSTITUTION_DUPLICATE';
+	END IF;
+
+	INSERT INTO institucion (
+		id_territorio, nombre, tipo, correo, telefono, direccion
+	) VALUES (
+		p_id_territorio, p_nombre, p_tipo, p_correo, p_telefono, p_direccion
+	);
+	SELECT LAST_INSERT_ID();
+END
+//
+DELIMITER ;
+
+DELIMITER //
+CREATE PROCEDURE ActualizarInstitucion (
+	IN p_id_institucion INT,
+	IN p_id_territorio INT,
+	IN p_nombre VARCHAR(50),
+	IN p_tipo VARCHAR(50),
+	IN p_correo VARCHAR(254),
+	IN p_telefono VARCHAR(50),
+	IN p_direccion VARCHAR(100),
+	IN p_actualiza_territorio BOOLEAN,
+	IN p_actualiza_nombre BOOLEAN,
+	IN p_actualiza_tipo BOOLEAN,
+	IN p_actualiza_correo BOOLEAN,
+	IN p_actualiza_telefono BOOLEAN,
+	IN p_actualiza_direccion BOOLEAN
+)
+BEGIN
+	DECLARE v_encontrada BOOLEAN DEFAULT FALSE;
+	DECLARE v_territorio_encontrado BOOLEAN DEFAULT TRUE;
+	DECLARE v_duplicada BOOLEAN DEFAULT FALSE;
+	DECLARE v_nuevo_territorio INT;
+	DECLARE v_nuevo_nombre VARCHAR(50);
+	DECLARE v_nuevo_tipo VARCHAR(50);
+
+	SET v_encontrada = EXISTS (
+		SELECT 1 FROM institucion WHERE id_institucion = p_id_institucion
+	);
+	IF v_encontrada THEN
+		IF p_actualiza_territorio THEN
+			SET v_territorio_encontrado = EXISTS (
+				SELECT 1 FROM territorio WHERE id_territorio = p_id_territorio
+			);
+		END IF;
+		IF v_territorio_encontrado THEN
+			SELECT
+				IF(p_actualiza_territorio, p_id_territorio, id_territorio),
+				IF(p_actualiza_nombre, p_nombre, nombre),
+				IF(p_actualiza_tipo, p_tipo, tipo)
+			INTO v_nuevo_territorio, v_nuevo_nombre, v_nuevo_tipo
+			FROM institucion
+			WHERE id_institucion = p_id_institucion;
+
+			SET v_duplicada = EXISTS (
+				SELECT 1 FROM institucion
+				WHERE id_institucion <> p_id_institucion
+					AND id_territorio = v_nuevo_territorio
+					AND nombre = v_nuevo_nombre
+					AND tipo = v_nuevo_tipo
+			);
+			IF NOT v_duplicada THEN
+				UPDATE institucion
+				SET id_territorio = IF(p_actualiza_territorio, p_id_territorio, id_territorio),
+					nombre = IF(p_actualiza_nombre, p_nombre, nombre),
+					tipo = IF(p_actualiza_tipo, p_tipo, tipo),
+					correo = IF(p_actualiza_correo, p_correo, correo),
+					telefono = IF(p_actualiza_telefono, p_telefono, telefono),
+					direccion = IF(p_actualiza_direccion, p_direccion, direccion)
+				WHERE id_institucion = p_id_institucion;
+			END IF;
+		END IF;
+	END IF;
+	SELECT v_encontrada, v_duplicada, v_territorio_encontrado;
+END
+//
+DELIMITER ;
+
+DELIMITER //
+CREATE PROCEDURE ActualizarEstadoInstitucion (
+	IN p_id_institucion INT,
+	IN p_es_activo BOOLEAN
+)
+BEGIN
+	DECLARE v_encontrada BOOLEAN DEFAULT FALSE;
+
+	SET v_encontrada = EXISTS (
+		SELECT 1 FROM institucion WHERE id_institucion = p_id_institucion
+	);
+	IF v_encontrada THEN
+		UPDATE institucion
+		SET es_activo = p_es_activo
+		WHERE id_institucion = p_id_institucion;
+	END IF;
+	SELECT v_encontrada;
 END
 //
 DELIMITER ;

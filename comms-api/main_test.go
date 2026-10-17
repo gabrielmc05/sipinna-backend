@@ -11,6 +11,11 @@ func TestReportRoutesAreRegistered(t *testing.T) {
 		"GET /api/v1/territorios/:id":            false,
 		"GET /api/v1/usuario/alimentadores":      false,
 		"GET /api/v1/mapa/reportes":              false,
+		"GET /api/v1/instituciones":              false,
+		"GET /api/v1/instituciones/:id":          false,
+		"POST /api/v1/instituciones":             false,
+		"PATCH /api/v1/instituciones/:id":        false,
+		"PATCH /api/v1/instituciones/:id/estado": false,
 	}
 	for _, route := range newRouter().Routes() {
 		key := route.Method + " " + route.Path

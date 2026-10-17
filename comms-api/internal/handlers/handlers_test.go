@@ -10,6 +10,23 @@ import (
 	"github.com/gabrielmc05/sipinna-backend/comms-api/internal/dboper"
 )
 
+func TestValidateInstitutionFields(t *testing.T) {
+	email := "contact@example.com"
+	if err := validateInstitutionFields("Centro SIPINNA", "SIPINNA", &email, nil, nil); err != nil {
+		t.Fatalf("valid institution fields were rejected: %v", err)
+	}
+
+	invalidEmail := "not-an-email"
+	if err := validateInstitutionFields("Centro SIPINNA", "SIPINNA", &invalidEmail, nil, nil); err == nil {
+		t.Fatal("invalid email was accepted")
+	}
+
+	longName := strings.Repeat("x", 51)
+	if err := validateInstitutionFields(longName, "SIPINNA", nil, nil, nil); err == nil {
+		t.Fatal("name longer than 50 characters was accepted")
+	}
+}
+
 func TestValidateReportRequest(t *testing.T) {
 	latitude := 0.0
 	longitude := 0.0
