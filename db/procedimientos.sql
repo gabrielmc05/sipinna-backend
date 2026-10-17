@@ -6,6 +6,11 @@ DROP PROCEDURE IF EXISTS AgregarEvidencias;
 DROP PROCEDURE IF EXISTS ObtenerReportes;
 DROP PROCEDURE IF EXISTS AsignarReporte;
 DROP PROCEDURE IF EXISTS ObtenerEvidencias;
+DROP PROCEDURE IF EXISTS ObtenerEstados;
+DROP PROCEDURE IF EXISTS ObtenerTerritorios;
+DROP PROCEDURE IF EXISTS ObtenerTerritorioId;
+DROP PROCEDURE IF EXISTS ObtenerAlimentadores;
+DROP PROCEDURE IF EXISTS ObtenerPuntosMapa;
 DROP PROCEDURE IF EXISTS ConsultarReporte;
 DROP PROCEDURE IF EXISTS ListarReportesUsuario;
 DROP PROCEDURE IF EXISTS ActualizarEstadoReporte;
@@ -461,6 +466,104 @@ BEGIN
 		e.ruta
 	FROM (SELECT 1) AS solicitud
 	LEFT JOIN evidencia AS e ON e.folio = p_folio;
+END
+//
+DELIMITER ;
+
+DELIMITER //
+CREATE PROCEDURE ObtenerEstados ()
+BEGIN
+	SELECT DISTINCT estado
+	FROM territorio
+	WHERE estado IS NOT NULL
+	ORDER BY estado ASC;
+END
+//
+DELIMITER ;
+
+DELIMITER //
+CREATE PROCEDURE ObtenerTerritorios (
+	IN p_estado VARCHAR(50),
+	IN p_municipio VARCHAR(50)
+)
+BEGIN
+	SELECT id_territorio, COALESCE(estado, ''), nombre
+	FROM territorio
+	WHERE (p_estado IS NULL OR estado = p_estado)
+		AND (p_municipio IS NULL OR nombre LIKE CONCAT('%', p_municipio, '%'))
+	ORDER BY estado ASC, nombre ASC, id_territorio ASC;
+END
+//
+DELIMITER ;
+
+DELIMITER //
+CREATE PROCEDURE ObtenerTerritorioId (
+	IN p_id_territorio INT
+)
+BEGIN
+	SELECT id_territorio, COALESCE(estado, ''), nombre
+	FROM territorio
+	WHERE id_territorio = p_id_territorio;
+END
+//
+DELIMITER ;
+
+DELIMITER //
+CREATE PROCEDURE ObtenerAlimentadores ()
+BEGIN
+	SELECT
+		u.id_usuario,
+		u.nombre,
+		u.apellidos,
+		u.correo,
+		u.telefono,
+		i.id_institucion,
+		i.nombre
+	FROM administrador AS a
+	INNER JOIN usuario AS u ON u.id_usuario = a.id_usuario
+	INNER JOIN institucion AS i ON i.id_institucion = a.id_institucion
+	WHERE a.rol = 'Alimentador'
+		AND u.es_activo = 1
+		AND i.es_activo = 1
+	ORDER BY u.apellidos ASC, u.nombre ASC, u.id_usuario ASC;
+END
+//
+DELIMITER ;
+
+DELIMITER //
+CREATE PROCEDURE ObtenerPuntosMapa (
+	IN p_id_usuario INT
+)
+BEGIN
+	DECLARE v_rol VARCHAR(20) DEFAULT NULL;
+
+	SET v_rol = (
+		SELECT rol
+		FROM administrador
+		WHERE id_usuario = p_id_usuario
+		LIMIT 1
+	);
+
+	IF v_rol IS NULL OR v_rol NOT IN ('Administrador', 'Alimentador') THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Usuario sin rol de personal autorizado.';
+	END IF;
+
+	SELECT
+		r.folio,
+		u.latitud,
+		u.longitud,
+		x.estado,
+		r.fecha_reporte,
+		t.id_territorio,
+		COALESCE(t.estado, ''),
+		t.nombre
+	FROM reporte AS r
+	INNER JOIN expediente AS x ON x.folio = r.folio
+	INNER JOIN ubicacion AS u ON u.folio = r.folio
+	INNER JOIN territorio AS t ON t.id_territorio = u.id_territorio
+	WHERE v_rol = 'Administrador'
+		OR (v_rol = 'Alimentador' AND x.id_usuario = p_id_usuario)
+	ORDER BY r.fecha_reporte DESC, r.folio ASC;
 END
 //
 DELIMITER ;

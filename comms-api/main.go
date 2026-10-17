@@ -79,6 +79,18 @@ func newRouter() *gin.Engine {
 	// Si el reporte no se encuentra o el código es incorrecto, devuelve un error adecuado
 	api.GET("/reportes/consultar", handlers.ConsultReport)
 
+	// GET para obtener reportes geolocalizados visibles al usuario institucional autenticado.
+	// devuelve folio, coordenadas, estado del expediente y datos del territorio. 
+	// Requiere JWT, los administradores ven todos los reportes y los alimentadores solo los asignados.
+	api.GET("/mapa/reportes", handlers.GetMapReports)
+
+	// GET para obtener territorios; permite filtrar por estado y municipio.
+	api.GET("/territorios", handlers.GetTerritories)
+	api.GET("/territorios/:id", handlers.GetTerritory)
+
+	// GET para consultar las cuentas de alimentadores (solo administradores).
+	api.GET("/usuario/alimentadores", handlers.GetFeeders)
+
 	// GET para consultar reporte solo con folio pero con usuario autenticado
 	// ConsultFolio maneja la consulta de un reporte específico utilizando el folio y
 	// el token de autorización del usuario.
@@ -92,7 +104,7 @@ func newRouter() *gin.Engine {
 	api.GET("/reportes/historico", handlers.ReportHistory)
 
 	// POST para asignar un reporte a un alimentador.
-	// recibe {"id_alimentador": 123}. Solo un administrador puede asignar, y el ID debe pertenecer 
+	// recibe {"id_alimentador": 123}. Solo un administrador puede asignar, y el ID debe pertenecer
 	// a un alimentador. No se restringe la asignación por institución
 	api.POST("/reportes/asignar/:folio", handlers.AssignReport)
 

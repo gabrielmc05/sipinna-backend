@@ -423,6 +423,95 @@ func GetEvidence(c *gin.Context) {
 	}
 }
 
+// GetTerritories devuelve los estados disponibles y los municipios, con filtros opcionales.
+func GetTerritories(c *gin.Context) {
+	var state, municipality *string
+	if value := strings.TrimSpace(c.Query("estado")); value != "" {
+		state = &value
+	}
+	if value := strings.TrimSpace(c.Query("municipio")); value != "" {
+		municipality = &value
+	}
+
+	options, err := dboper.GetTerritoryOptions(state, municipality)
+	if err != nil {
+		log.Printf("get territory options: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no fue posible consultar los territorios"})
+		return
+	}
+	c.JSON(http.StatusOK, options)
+}
+
+// GetTerritory devuelve un municipio registrado mediante su ID.
+func GetTerritory(c *gin.Context) {
+	id, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || id == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "id de territorio inválido"})
+		return
+	}
+	territory, err := dboper.GetTerritory(uint32(id))
+	if errors.Is(err, dboper.ErrTerritoryNotFound) {
+		c.JSON(http.StatusNotFound, gin.H{"error": "territorio no encontrado"})
+		return
+	}
+	if err != nil {
+		log.Printf("get territory: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no fue posible consultar el territorio"})
+		return
+	}
+	c.JSON(http.StatusOK, territory)
+}
+
+// GetFeeders devuelve las cuentas activas de alimentadores; solo está disponible para administradores.
+func GetFeeders(c *gin.Context) {
+	userID, err := authenticateStaff(c)
+	if err != nil {
+		return
+	}
+	role, err := dboper.GetStaffRole(userID)
+	if err != nil {
+		respondStaffRoleError(c, err)
+		return
+	}
+	if role != "Administrador" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "solo un administrador puede consultar alimentadores"})
+		return
+	}
+
+	feeders, err := dboper.GetFeeders()
+	if err != nil {
+		log.Printf("get feeders: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no fue posible consultar los alimentadores"})
+		return
+	}
+	c.JSON(http.StatusOK, feeders)
+}
+
+// GetMapReports devuelve las ubicaciones de reportes visibles para el personal autenticado.
+func GetMapReports(c *gin.Context) {
+	userID, err := authenticateStaff(c)
+	if err != nil {
+		return
+	}
+	role, err := dboper.GetStaffRole(userID)
+	if err != nil {
+		respondStaffRoleError(c, err)
+		return
+	}
+	if role != "Administrador" && role != "Alimentador" {
+		c.JSON(http.StatusForbidden, gin.H{"error": "rol sin permisos para consultar el mapa"})
+		return
+	}
+
+	reports, err := dboper.GetMapReports(userID)
+	if err != nil {
+		log.Printf("get map reports: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "no fue posible consultar los puntos del mapa"})
+		return
+	}
+	c.JSON(http.StatusOK, reports)
+}
+
 func authenticateStaff(c *gin.Context) (uint32, error) {
 	userID, err := token.Authenticate(c.GetHeader("Authorization"))
 	if err == nil {

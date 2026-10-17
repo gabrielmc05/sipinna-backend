@@ -7,6 +7,10 @@ func TestReportRoutesAreRegistered(t *testing.T) {
 		"GET /api/v1/reportes/historico":         false,
 		"POST /api/v1/reportes/asignar/:folio":   false,
 		"GET /api/v1/reportes/:folio/evidencias": false,
+		"GET /api/v1/territorios":                false,
+		"GET /api/v1/territorios/:id":            false,
+		"GET /api/v1/usuario/alimentadores":      false,
+		"GET /api/v1/mapa/reportes":              false,
 	}
 	for _, route := range newRouter().Routes() {
 		key := route.Method + " " + route.Path
