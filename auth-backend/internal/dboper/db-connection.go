@@ -1,12 +1,16 @@
 package dboper
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
+	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/joho/godotenv"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/joho/godotenv"
 )
 
 var db *sql.DB
@@ -24,12 +28,21 @@ func Setup() error {
 	var (
 		dataSourceName strings.Builder
 		err            error
+		rootCertPool   *x509.CertPool = x509.NewCertPool()
+		pem            []byte
 	)
 
-	dataSourceName.WriteString("root:")
+	if pem, err = os.ReadFile("./global-bundle.pem"); err != nil {
+		log.Fatalf("Error, failed to read cert: %s.", err)
+	}
+
+	rootCertPool.AppendCertsFromPEM(pem)
+	mysql.RegisterTLSConfig("custom", &tls.Config{RootCAs: rootCertPool})
+
+	dataSourceName.WriteString("sipinna_admin:")
 	if val, ok := os.LookupEnv("MARIADB_ROOT_PASSWORD"); ok {
 		dataSourceName.WriteString(val)
-		dataSourceName.WriteString("@(")
+		dataSourceName.WriteString("@tcp(")
 	} else {
 		log.Fatal("MARIADB_ROOT_PASSWORD environment variable not set.")
 	}
@@ -41,6 +54,7 @@ func Setup() error {
 	}
 	if val, ok := os.LookupEnv("MARIADB_DATABASE"); ok {
 		dataSourceName.WriteString(val)
+		dataSourceName.WriteString("?tls=custom")
 	} else {
 		log.Fatal("MARIADB_DATABASE environment variable not set.")
 	}
