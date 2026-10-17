@@ -132,23 +132,44 @@ func CreateEvidences(folio string, evidence []Evidence) error {
 	return nil
 }
 
+
+// ConsultFolio obtiene la información de un reporte
+// para un administrador o alimentador autenticado.
+//
+// El procedimiento almacenado verifica que:
+//   - Los administradores puedan consultar todos los reportes.
+//   - Los alimentadores únicamente consulten los asignados.
+//
+// No utiliza el código privado del reportante.
 func ConsultFolio(folio string, userID uint32) (ReportSummary, error) {
 	var report ReportSummary
-	err := db.QueryRow("CALL ConsultarReporte(?,?)", folio, userID).Scan(
+
+	err := db.QueryRow(
+		"CALL ConsultarReportePersonal(?,?)",
+		folio,
+		userID,
+	).Scan(
 		&report.Folio,
 		&report.Status,
 		&report.SubmittedAt,
 		&report.Description,
 		&report.Address,
 	)
+
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return ReportSummary{}, sql.ErrNoRows
 		}
-		return ReportSummary{}, fmt.Errorf("consult report: %w", err)
+
+		return ReportSummary{}, fmt.Errorf(
+			"consult staff report: %w",
+			err,
+		)
 	}
+
 	return report, nil
 }
+
 
 func ConsultReport(folio, codeHash string) (ReportSummary, error) {
 	var report ReportSummary
