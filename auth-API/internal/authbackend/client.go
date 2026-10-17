@@ -5,11 +5,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"time"
+
+	"github.com/joho/godotenv"
 )
+
+func init() {
+	if err := godotenv.Load(); err != nil {
+		log.Fatalf("Error loading .env file: %s.", err)
+	}
+}
 
 func baseURL() string {
 	u := os.Getenv("AUTH_BACKEND_URL")
