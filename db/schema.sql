@@ -79,6 +79,7 @@ CREATE TABLE `reporte` (
   `es_anonimo` tinyint(1) NOT NULL,
   `desea_seguimiento` tinyint(1) NOT NULL,
   `hay_adulto_involucrado` tinyint(1) NOT NULL,
+  `peligro_inmediato` enum('Sí', 'No', 'No sé') NOT NULL,
   PRIMARY KEY (`folio`),
   KEY `fk_reporte_usuario` (`id_usuario`),
   CONSTRAINT `fk_reporte_usuario`

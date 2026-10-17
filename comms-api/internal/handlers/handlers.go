@@ -42,6 +42,7 @@ type reportRequest struct {
 	Anonymous       bool           `json:"es_anonimo"`
 	WantsFollowUp   bool           `json:"desea_seguimiento"`
 	AdultInvolved   bool           `json:"hay_adulto_involucrado"`
+	ImmediateDanger string         `json:"peligro_inmediato" binding:"required"`
 	Location        locationInput  `json:"ubicacion" binding:"required"`
 	Minors          []dboper.Minor `json:"menores" binding:"required,min=1"`
 	Tags            []dboper.Tag   `json:"etiquetas" binding:"required"`
@@ -114,6 +115,7 @@ func CreateReport(c *gin.Context) {
 		Anonymous:       request.Anonymous,
 		WantsFollowUp:   request.WantsFollowUp,
 		AdultInvolved:   request.AdultInvolved,
+		ImmediateDanger: request.ImmediateDanger,
 		Latitude:        *request.Location.Latitude,
 		Longitude:       *request.Location.Longitude,
 		Address:         request.Location.Address,
@@ -599,6 +601,9 @@ func validateReportRequest(request reportRequest) error {
 	if strings.TrimSpace(request.Description) == "" {
 		return errors.New("descripcion no puede estar vacía")
 	}
+	if !isImmediateDanger(request.ImmediateDanger) {
+		return errors.New("peligro_inmediato debe ser Sí, No o No sé")
+	}
 	if len(request.Description) > 65535 {
 		return errors.New("descripcion excede el tamaño permitido")
 	}
@@ -643,6 +648,15 @@ func validateReportRequest(request reportRequest) error {
 func isReportStatus(status string) bool {
 	switch status {
 	case "Nuevo", "En revisión", "Asignado", "En investigación", "Canalizado a Procuraduría", "Cerrado", "Descartado":
+		return true
+	default:
+		return false
+	}
+}
+
+func isImmediateDanger(value string) bool {
+	switch value {
+	case "Sí", "No", "No sé":
 		return true
 	default:
 		return false

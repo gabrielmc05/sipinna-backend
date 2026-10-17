@@ -431,11 +431,11 @@ SET @usuario_reportante_id = LAST_INSERT_ID();
 -- Reporte
 INSERT INTO reporte (folio, id_usuario, correo_contacto, codigo_seguridad_hash,
                       descripcion, horario_aproximado, es_anonimo,
-                      desea_seguimiento, hay_adulto_involucrado)
+                      desea_seguimiento, hay_adulto_involucrado, peligro_inmediato)
 VALUES ('RPT0000001', @usuario_reportante_id, NULL,
         '$argon2id$v=19$m=65536,t=3,p=4$placeholder_hash_codigo',
         'Se observó a un menor vendiendo dulces en un cruce vehicular durante horario escolar.',
-        '10:30:00', FALSE, TRUE, TRUE);
+        '10:30:00', FALSE, TRUE, TRUE, 'No sé');
 
 -- Ubicación
 INSERT INTO ubicacion (folio, latitud, longitud, direccion_texto, id_territorio)

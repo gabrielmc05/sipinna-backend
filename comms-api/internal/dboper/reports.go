@@ -36,6 +36,7 @@ type ReportCreation struct {
 	Anonymous       bool
 	WantsFollowUp   bool
 	AdultInvolved   bool
+	ImmediateDanger string
 	Latitude        float64
 	Longitude       float64
 	Address         string
@@ -58,14 +59,16 @@ type HistoricalReport struct {
 	Address          string    `json:"direccion"`
 	TerritoryID      uint32    `json:"id_territorio"`
 	AssignedFeederID *uint32   `json:"id_alimentador"`
+	ImmediateDanger  string    `json:"peligro_inmediato"`
 }
 
 type ReportSummary struct {
-	Folio       string    `json:"folio"`
-	Status      string    `json:"estatus"`
-	SubmittedAt timeValue `json:"fecha_envio"`
-	Description string    `json:"descripcion"`
-	Address     string    `json:"direccion"`
+	Folio           string    `json:"folio"`
+	Status          string    `json:"estatus"`
+	SubmittedAt     timeValue `json:"fecha_envio"`
+	Description     string    `json:"descripcion"`
+	Address         string    `json:"direccion"`
+	ImmediateDanger string    `json:"peligro_inmediato"`
 }
 
 // timeValue marshals database timestamps using the ISO-8601 format expected by clients.
@@ -88,7 +91,7 @@ func CreateReport(report ReportCreation, folio, codeHash string) error {
 		return fmt.Errorf("encode report minors: %w", err)
 	}
 	_, err = db.Exec(
-		"CALL CrearReporte(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+		"CALL CrearReporte(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
 		folio,
 		report.UserID,
 		report.ContactEmail,
@@ -98,6 +101,7 @@ func CreateReport(report ReportCreation, folio, codeHash string) error {
 		report.Anonymous,
 		report.WantsFollowUp,
 		report.AdultInvolved,
+		report.ImmediateDanger,
 		report.Latitude,
 		report.Longitude,
 		report.Address,
@@ -132,7 +136,6 @@ func CreateEvidences(folio string, evidence []Evidence) error {
 	return nil
 }
 
-
 // ConsultFolio obtiene la información de un reporte
 // para un administrador o alimentador autenticado.
 //
@@ -154,6 +157,7 @@ func ConsultFolio(folio string, userID uint32) (ReportSummary, error) {
 		&report.SubmittedAt,
 		&report.Description,
 		&report.Address,
+		&report.ImmediateDanger,
 	)
 
 	if err != nil {
@@ -170,7 +174,6 @@ func ConsultFolio(folio string, userID uint32) (ReportSummary, error) {
 	return report, nil
 }
 
-
 func ConsultReport(folio, codeHash string) (ReportSummary, error) {
 	var report ReportSummary
 	err := db.QueryRow("CALL ConsultarReporte(?,?)", folio, codeHash).Scan(
@@ -179,6 +182,7 @@ func ConsultReport(folio, codeHash string) (ReportSummary, error) {
 		&report.SubmittedAt,
 		&report.Description,
 		&report.Address,
+		&report.ImmediateDanger,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -205,6 +209,7 @@ func ListUserReports(userID uint32) ([]ReportSummary, error) {
 			&report.SubmittedAt,
 			&report.Description,
 			&report.Address,
+			&report.ImmediateDanger,
 		); err != nil {
 			return nil, fmt.Errorf("scan report: %w", err)
 		}
@@ -250,6 +255,7 @@ func GetReportHistory(userID uint32, status *string, territoryID *uint32, dateOr
 			&report.Address,
 			&report.TerritoryID,
 			&assignedFeederID,
+			&report.ImmediateDanger,
 		); err != nil {
 			return nil, fmt.Errorf("scan report history row: %w", err)
 		}

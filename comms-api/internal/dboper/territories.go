@@ -30,14 +30,15 @@ type Feeder struct {
 }
 
 type MapReport struct {
-	Folio        string    `json:"folio"`
-	Latitude     float64   `json:"latitud"`
-	Longitude    float64   `json:"longitud"`
-	Status       string    `json:"estatus"`
-	SubmittedAt  timeValue `json:"fecha_envio"`
-	TerritoryID  uint32    `json:"id_territorio"`
-	State        string    `json:"estado"`
-	Municipality string    `json:"municipio"`
+	Folio           string    `json:"folio"`
+	Latitude        float64   `json:"latitud"`
+	Longitude       float64   `json:"longitud"`
+	Status          string    `json:"estatus"`
+	SubmittedAt     timeValue `json:"fecha_envio"`
+	TerritoryID     uint32    `json:"id_territorio"`
+	State           string    `json:"estado"`
+	Municipality    string    `json:"municipio"`
+	ImmediateDanger string    `json:"peligro_inmediato"`
 }
 
 func GetTerritoryOptions(state, municipality *string) (TerritoryOptions, error) {
@@ -148,6 +149,7 @@ func GetMapReports(userID uint32) ([]MapReport, error) {
 			&report.TerritoryID,
 			&report.State,
 			&report.Municipality,
+			&report.ImmediateDanger,
 		); err != nil {
 			return nil, fmt.Errorf("scan map report: %w", err)
 		}

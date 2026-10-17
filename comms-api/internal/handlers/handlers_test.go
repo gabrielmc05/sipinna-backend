@@ -1,4 +1,4 @@
-// handlers_test.go es un archivo de prueba para el paquete handlers. 
+// handlers_test.go es un archivo de prueba para el paquete handlers.
 // Contiene pruebas unitarias para las funciones validateReportRequest, newFolio y detectEvidenceType.
 
 package handlers
@@ -14,7 +14,8 @@ func TestValidateReportRequest(t *testing.T) {
 	latitude := 0.0
 	longitude := 0.0
 	request := reportRequest{
-		Description: "Se reporta una situación",
+		Description:     "Se reporta una situación",
+		ImmediateDanger: "No sé",
 		Location: locationInput{
 			Latitude:    &latitude,
 			Longitude:   &longitude,
@@ -29,6 +30,34 @@ func TestValidateReportRequest(t *testing.T) {
 	request.Location.Latitude = nil
 	if err := validateReportRequest(request); err == nil {
 		t.Fatal("report without latitude was accepted")
+	}
+}
+
+func TestValidateImmediateDanger(t *testing.T) {
+	for _, danger := range []string{"Sí", "No", "No sé"} {
+		if !isImmediateDanger(danger) {
+			t.Errorf("valid immediate danger %q was rejected", danger)
+		}
+	}
+	for _, danger := range []string{"", "Desconocido", "si"} {
+		if isImmediateDanger(danger) {
+			t.Errorf("invalid immediate danger %q was accepted", danger)
+		}
+	}
+
+	latitude, longitude := 0.0, 0.0
+	request := reportRequest{
+		Description:     "Reporte de prueba",
+		ImmediateDanger: "No sé",
+		Location:        locationInput{Latitude: &latitude, Longitude: &longitude, TerritoryID: 1},
+		Minors:          []dboper.Minor{{Gender: "No identificado"}},
+	}
+	if err := validateReportRequest(request); err != nil {
+		t.Fatalf("valid danger value was rejected: %v", err)
+	}
+	request.ImmediateDanger = ""
+	if err := validateReportRequest(request); err == nil {
+		t.Fatal("missing immediate danger value was accepted")
 	}
 }
 

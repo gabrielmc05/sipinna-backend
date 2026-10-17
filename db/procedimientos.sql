@@ -12,6 +12,7 @@ DROP PROCEDURE IF EXISTS ObtenerTerritorioId;
 DROP PROCEDURE IF EXISTS ObtenerAlimentadores;
 DROP PROCEDURE IF EXISTS ObtenerPuntosMapa;
 DROP PROCEDURE IF EXISTS ConsultarReporte;
+DROP PROCEDURE IF EXISTS ConsultarReportePersonal;
 DROP PROCEDURE IF EXISTS ListarReportesUsuario;
 DROP PROCEDURE IF EXISTS ActualizarEstadoReporte;
 DROP FUNCTION IF EXISTS EsAdministrador;
@@ -130,6 +131,7 @@ CREATE PROCEDURE CrearReporte (
 	IN p_es_anonimo BOOLEAN,
 	IN p_desea_seguimiento BOOLEAN,
 	IN p_hay_adulto_involucrado BOOLEAN,
+	IN p_peligro_inmediato VARCHAR(10),
 	IN p_latitud DECIMAL(9,6),
 	IN p_longitud DECIMAL(9,6),
 	IN p_direccion_texto TINYTEXT,
@@ -155,6 +157,9 @@ BEGIN
 	IF NOT EXISTS (SELECT 1 FROM territorio WHERE id_territorio = p_id_territorio) THEN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Territorio no encontrado.';
 	END IF;
+	IF p_peligro_inmediato IS NULL OR p_peligro_inmediato NOT IN ('Sí', 'No', 'No sé') THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Valor de peligro inmediato inválido.';
+	END IF;
 
 	SELECT id_institucion INTO v_id_institucion
 	FROM institucion
@@ -173,10 +178,12 @@ BEGIN
 	START TRANSACTION;
 	INSERT INTO reporte (
 		folio, id_usuario, correo_contacto, codigo_seguridad_hash, descripcion,
-		horario_aproximado, es_anonimo, desea_seguimiento, hay_adulto_involucrado
+		horario_aproximado, es_anonimo, desea_seguimiento, hay_adulto_involucrado,
+		peligro_inmediato
 	) VALUES (
 		p_folio, p_id_usuario, p_correo_contacto, UNHEX(p_codigo_seguridad_hash), p_descripcion,
-		p_horario_aproximado, p_es_anonimo, p_desea_seguimiento, p_hay_adulto_involucrado
+		p_horario_aproximado, p_es_anonimo, p_desea_seguimiento, p_hay_adulto_involucrado,
+		p_peligro_inmediato
 	);
 	INSERT INTO ubicacion (folio, latitud, longitud, direccion_texto, id_territorio)
 	VALUES (p_folio, p_latitud, p_longitud, p_direccion_texto, p_id_territorio);
@@ -274,7 +281,48 @@ BEGIN
 		SET MESSAGE_TEXT = 'Usuario no autorizado';
 	END IF;
 	
-	SELECT r.folio, e.estado, r.fecha_reporte, r.descripcion, COALESCE(u.direccion_texto, '')
+	SELECT r.folio, e.estado, r.fecha_reporte, r.descripcion, COALESCE(u.direccion_texto, ''),
+		r.peligro_inmediato
+	FROM reporte AS r
+	INNER JOIN expediente AS e ON e.folio = r.folio
+	INNER JOIN ubicacion AS u ON u.folio = r.folio
+	WHERE r.folio = p_folio;
+END
+//
+DELIMITER ;
+
+DELIMITER //
+CREATE PROCEDURE ConsultarReportePersonal (
+	IN p_folio CHAR(15),
+	IN p_id_usuario INT(11)
+)
+BEGIN
+	IF NOT EXISTS (SELECT 1 FROM reporte WHERE folio = p_folio) THEN
+		SIGNAL SQLSTATE '45000'
+			SET MESSAGE_TEXT = 'No existen reportes con ese folio';
+	END IF;
+
+	IF NOT EXISTS (
+		SELECT 1 FROM reporte
+		WHERE folio = p_folio AND id_usuario = p_id_usuario
+	) AND NOT EXISTS (
+		SELECT 1 FROM administrador
+		WHERE id_usuario = p_id_usuario AND rol = 'Administrador'
+	) AND NOT EXISTS (
+		SELECT 1 FROM expediente
+		WHERE folio = p_folio AND id_usuario = p_id_usuario
+	) THEN
+		SIGNAL SQLSTATE '45000'
+			SET MESSAGE_TEXT = 'Usuario no autorizado';
+	END IF;
+
+	SELECT
+		r.folio,
+		e.estado,
+		r.fecha_reporte,
+		r.descripcion,
+		COALESCE(u.direccion_texto, ''),
+		r.peligro_inmediato
 	FROM reporte AS r
 	INNER JOIN expediente AS e ON e.folio = r.folio
 	INNER JOIN ubicacion AS u ON u.folio = r.folio
@@ -289,7 +337,8 @@ CREATE PROCEDURE ConsultarReporte (
 	IN p_codigo_seguridad_hash CHAR(64)
 )
 BEGIN
-	SELECT r.folio, e.estado, r.fecha_reporte, r.descripcion, COALESCE(u.direccion_texto, '')
+	SELECT r.folio, e.estado, r.fecha_reporte, r.descripcion, COALESCE(u.direccion_texto, ''),
+		r.peligro_inmediato
 	FROM reporte AS r
 	INNER JOIN expediente AS e ON e.folio = r.folio
 	INNER JOIN ubicacion AS u ON u.folio = r.folio
@@ -304,7 +353,8 @@ CREATE PROCEDURE ListarReportesUsuario (
 	IN p_id_usuario INT
 )
 BEGIN
-	SELECT r.folio, e.estado, r.fecha_reporte, r.descripcion, COALESCE(u.direccion_texto, '')
+	SELECT r.folio, e.estado, r.fecha_reporte, r.descripcion, COALESCE(u.direccion_texto, ''),
+		r.peligro_inmediato
 	FROM reporte AS r
 	INNER JOIN expediente AS e ON e.folio = r.folio
 	INNER JOIN ubicacion AS u ON u.folio = r.folio
@@ -381,7 +431,8 @@ BEGIN
 		r.descripcion,
 		COALESCE(u.direccion_texto, ''),
 		u.id_territorio,
-		x.id_usuario
+		x.id_usuario,
+		r.peligro_inmediato
 	FROM reporte AS r
 	INNER JOIN expediente AS x ON x.folio = r.folio
 	INNER JOIN ubicacion AS u ON u.folio = r.folio
@@ -556,7 +607,8 @@ BEGIN
 		r.fecha_reporte,
 		t.id_territorio,
 		COALESCE(t.estado, ''),
-		t.nombre
+		t.nombre,
+		r.peligro_inmediato
 	FROM reporte AS r
 	INNER JOIN expediente AS x ON x.folio = r.folio
 	INNER JOIN ubicacion AS u ON u.folio = r.folio
