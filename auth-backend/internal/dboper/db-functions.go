@@ -184,20 +184,37 @@ func NewAdmin(admin *Admin) (user_id uint32, user_name string, err error) {
 	return user_id, user_name, nil
 }
 
-// ChangeUserPassword se usa al cambiar la contraseña de un usuario,
-// la hashea y encripta antes de registrarla.
-func ChangeUserPassword(user_id uint32, newPassword string) (err error) {
-	if newPassword, err = EncryptHashUserPassword(newPassword); err != nil {
-		log.Println(err)
-	}
 
-	if _, err = db.Exec("UPDATE usuario SET hash_contrasenna=UNHEX(?) where id_usuario=?",
-		newPassword, user_id); err != nil {
-		err = fmt.Errorf("Error: in query: %w", err)
-		log.Print(err)
-		return err
-	}
-	return nil
+// ChangeUserPassword actualiza la contraseña de un usuario.
+//
+// Primero genera el hash SHA-256 y lo cifra usando
+// el mecanismo existente de autenticación.
+//
+// Si el procesamiento falla, no modifica MariaDB.
+
+func ChangeUserPassword(user_id uint32, newPassword string) error {
+    encryptedHash, err := EncryptHashUserPassword(newPassword)
+    if err != nil {
+        return fmt.Errorf(
+            "error al procesar la nueva contraseña: %w",
+            err,
+        )
+    }
+
+    _, err = db.Exec(
+        "UPDATE usuario SET hash_contrasenna = UNHEX(?) WHERE id_usuario = ?",
+        encryptedHash,
+        user_id,
+    )
+
+    if err != nil {
+        return fmt.Errorf(
+            "error al actualizar la contraseña: %w",
+            err,
+        )
+    }
+
+    return nil
 }
 
 func ChangeUserEmail(user_id uint32, newEmail string) (err error) {
