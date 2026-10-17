@@ -18,7 +18,7 @@ DROP PROCEDURE IF EXISTS ActualizarEstadoReporte;
 DROP FUNCTION IF EXISTS EsAdministrador;
 DROP FUNCTION IF EXISTS ExisteUsuario;
 DROP PROCEDURE IF EXISTS ConsultarFolio; 
-DROP FUNCTION IF EXISTS AsignarEtiquetaNuevoReporte;
+DROP PROCEDURE IF EXISTS AsignarEtiquetaNuevoReporte;
 
 -- Procedimientos y funciones
 DELIMITER //
@@ -114,6 +114,7 @@ DELIMITER ;
 DELIMITER //
 CREATE FUNCTION EsAdministrador(f_id_usuario INT(11))
 RETURNS BOOL
+READS SQL DATA
 BEGIN
     RETURN EXISTS ( 
 	       SELECT 1 FROM administrador WHERE id_usuario = f_id_usuario);
@@ -623,6 +624,7 @@ DELIMITER ;
 DELIMITER //
 CREATE FUNCTION ExisteUsuario(f_id_usuario INT(11))
 RETURNS BOOL
+READS SQL DATA
 BEGIN
     RETURN EXISTS ( 
 		SELECT 1 FROM usuario WHERE id_usuario = f_id_usuario);
