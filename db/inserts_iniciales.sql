@@ -457,7 +457,10 @@ INSERT INTO etiqueta (nombre_etiqueta, tipo) VALUES ('Utilización para activida
 INSERT INTO etiqueta (nombre_etiqueta, tipo) VALUES ('Trabajo peligroso', 'Categoria');
 INSERT INTO etiqueta (nombre_etiqueta, tipo) VALUES ('Mendicidad forzada', 'Categoria');
 INSERT INTO etiqueta (nombre_etiqueta, tipo) VALUES ('Otra situación de explotación y/o vulneración', 'Categoria');
+
 INSERT INTO etiqueta (nombre_etiqueta, tipo) VALUES ('Alta', 'Prioridad');
+INSERT INTO etiqueta (nombre_etiqueta, tipo) VALUES ('Media', 'Prioridad');
+INSERT INTO etiqueta (nombre_etiqueta, tipo) VALUES ('Baja', 'Prioridad');
 
 INSERT INTO reporteetiqueta (folio, nombre_etiqueta, tipo)
 VALUES ('RPT0000001', 'Trabajo infantil', 'Categoria');

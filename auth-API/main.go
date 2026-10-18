@@ -53,8 +53,7 @@ func requireAuthHeader(c *gin.Context) {
 
 // Traduce el error de auth-backend a una respuesta pública segura para que no se reenvía el mensaje interno
 func respondBackendError(c *gin.Context, err error) {
-	var backendErr *authbackend.BackendError
-	if errors.As(err, &backendErr) {
+	if backendErr, ok := errors.AsType[*authbackend.BackendError](err); ok {
 		switch backendErr.Status {
 		case http.StatusBadRequest:
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Datos invalidos"})
