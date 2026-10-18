@@ -1,7 +1,7 @@
--- PARA RDS
-DROP DATABASE IF EXISTS sipinna_db;
-CREATE DATABASE sipinna_db;
-USE sipinna_db;
+-- PARA RDS:
+-- DROP DATABASE IF EXISTS sipinna_db;
+-- CREATE DATABASE sipinna_db;
+-- USE sipinna_db;
 
 
 -- =========================================================

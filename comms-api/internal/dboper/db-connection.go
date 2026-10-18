@@ -2,14 +2,18 @@ package dboper
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"database/sql"
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/joho/godotenv"
 	"log"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/joho/godotenv"
 )
 
 var db *sql.DB
@@ -27,28 +31,36 @@ func Setup() error {
 	var (
 		dataSourceName strings.Builder
 		err            error
+		rootCertPool   *x509.CertPool = x509.NewCertPool()
+		pem            []byte
 	)
 
-	password, ok := os.LookupEnv("MARIADB_ROOT_PASSWORD")
-	if !ok {
-		return fmt.Errorf("MARIADB_ROOT_PASSWORD environment variable not set")
-	}
-	address, ok := os.LookupEnv("MARIADB_ADDRESS")
-	if !ok {
-		return fmt.Errorf("MARIADB_ADDRESS environment variable not set")
-	}
-	database, ok := os.LookupEnv("MARIADB_DATABASE")
-	if !ok {
-		return fmt.Errorf("MARIADB_DATABASE environment variable not set")
+	if pem, err = os.ReadFile("./global-bundle.pem"); err != nil {
+		log.Fatalf("Error, failed to read cert: %s.", err)
 	}
 
-	dataSourceName.WriteString("root:")
-	dataSourceName.WriteString(password)
-	dataSourceName.WriteString("@(")
-	dataSourceName.WriteString(address)
-	dataSourceName.WriteString(")/")
-	dataSourceName.WriteString(database)
-	dataSourceName.WriteString("?parseTime=true")
+	rootCertPool.AppendCertsFromPEM(pem)
+	mysql.RegisterTLSConfig("custom", &tls.Config{RootCAs: rootCertPool})
+
+	dataSourceName.WriteString("sipinna_admin:")
+	if val, ok := os.LookupEnv("MARIADB_ROOT_PASSWORD"); ok {
+		dataSourceName.WriteString(val)
+		dataSourceName.WriteString("@tcp(")
+	} else {
+		log.Fatal("MARIADB_ROOT_PASSWORD environment variable not set.")
+	}
+	if val, ok := os.LookupEnv("MARIADB_ADDRESS"); ok {
+		dataSourceName.WriteString(val)
+		dataSourceName.WriteString(")/")
+	} else {
+		log.Fatal("MARIADB_ADDRESS environment variable not set.")
+	}
+	if val, ok := os.LookupEnv("MARIADB_DATABASE"); ok {
+		dataSourceName.WriteString(val)
+		dataSourceName.WriteString("?tls=custom")
+	} else {
+		log.Fatal("MARIADB_DATABASE environment variable not set.")
+	}
 
 	db, err = sql.Open("mysql", dataSourceName.String())
 	if err != nil {
