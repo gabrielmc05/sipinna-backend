@@ -123,6 +123,16 @@ func newRouter() *gin.Engine {
 	// Si el usuario no tiene permiso para actualizar el reporte o si ocurre un error, devuelve un error adecuado.
 	api.PATCH("/reportes/:folio/estatus", handlers.UpdateReportStatus)
 
+
+	// Consultar la prioridad de un expediente.
+	// Administradores y alimentadores autorizados.
+	api.GET("/reportes/:folio/prioridad", handlers.GetReportPriority)
+
+	// Modificar la prioridad de un expediente.
+	// Solo administradores autorizados.
+	api.PATCH("/reportes/:folio/prioridad", handlers.UpdateReportPriority)
+	
+
 	// GET de lista de instituciones
 	// Institutions maneja la consulta de todas las instituciones disponibles en la base de datos.
 	// Devuelve la lista de instituciones en formato JSON. Si ocurre un error al consultar la base de datos,
