@@ -57,7 +57,7 @@ func Setup() error {
 	}
 	if val, ok := os.LookupEnv("MARIADB_DATABASE"); ok {
 		dataSourceName.WriteString(val)
-		dataSourceName.WriteString("?tls=custom")
+		dataSourceName.WriteString("?tls=custom&parseTime=true")
 	} else {
 		log.Fatal("MARIADB_DATABASE environment variable not set.")
 	}
