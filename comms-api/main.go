@@ -65,7 +65,7 @@ func newRouter() *gin.Engine {
 	// ConsultReport maneja la consulta de un reporte específico utilizando el folio y un código privado.
 	// Valida la solicitud y devuelve la información del reporte si el código es correcto.
 	// Si el reporte no se encuentra o el código es incorrecto, devuelve un error adecuado
-	api.GET("/reportes/consultar", handlers.ConsultReport)
+	api.POST("/reportes/consultar", handlers.ConsultReport)
 
 	// GET para obtener reportes geolocalizados visibles al usuario institucional autenticado.
 	// devuelve folio, coordenadas, estado del expediente y datos del territorio.
