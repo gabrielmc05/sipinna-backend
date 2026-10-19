@@ -16,7 +16,7 @@ func GetUserPasswordHash(user_id uint32) (passwordHash []byte, err error) {
 		hash_contrasenna   []byte
 	)
 
-	if err = db.QueryRow("SELECT hash_contrasenna FROM usuario where id_usuario=?",
+	if err = db.QueryRow("SELECT hash_contrasenna FROM usuario where id_usuario=? AND es_activo=1",
 		user_id).Scan(&hash_contrasenna); err != nil {
 		err = fmt.Errorf("Error: in query: %w", err)
 		log.Print(err)
@@ -33,7 +33,7 @@ func GetUserPasswordHash(user_id uint32) (passwordHash []byte, err error) {
 // GetUserSignatureKey obtiene la llave de firma de los JWT, se usa
 // para confirmación de identidad.
 func GetUserSignatureKey(user_id uint32) (key []byte, err error) {
-	if err = db.QueryRow("SELECT llave_firma FROM token where id_usuario=?",
+	if err = db.QueryRow("SELECT t.llave_firma FROM token t JOIN usuario u ON u.id_usuario = t.id_usuario WHERE t.id_usuario = ? AND u.es_activo = 1",
 		user_id).Scan(&key); err != nil {
 		err = fmt.Errorf("Error: in query: %w", err)
 		log.Print(err)

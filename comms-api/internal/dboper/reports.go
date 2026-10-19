@@ -346,7 +346,9 @@ func UpdateReportStatus(userID uint32, folio, status string, observations *strin
 
 func GetUserSignatureKey(userID uint32) ([]byte, error) {
 	var key []byte
-	err := db.QueryRow("SELECT llave_firma FROM token WHERE id_usuario=?", userID).Scan(&key)
+	err := db.QueryRow("SELECT t.llave_firma FROM token t INNER JOIN usuario u ON u.id_usuario = t.id_usuario WHERE t.id_usuario = ? AND u.es_activo = 1",
+		userID).Scan(&key)
+
 	if err != nil {
 		return nil, fmt.Errorf("get user signing key: %w", err)
 	}

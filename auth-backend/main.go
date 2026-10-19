@@ -24,10 +24,6 @@ func init() {
 		log.Fatalf("The connection to the database has failed: %s", err)
 		defer dboper.CloseDB()
 	}
-	dboper.ChangeUserPassword(3, "cisco123") //admin
-	dboper.ChangeUserPassword(4, "cisco321") //alim
-	dboper.ChangeUserPassword(5, "cisco987") //alim
-	dboper.ChangeUserPassword(6, "cisco789") //user
 
 	//gin.SetMode(gin.ReleaseMode) // No sé por qué no funciona esto
 
@@ -59,6 +55,9 @@ func init() {
 	router.PATCH("/password/:email", password)
 	router.PATCH("/user/:email", userEdit)
 	router.PATCH("/email", email)
+	router.GET("/admin/usuarios-app", listarUsuariosApp)
+	router.PATCH("/admin/usuarios-app/:id", editarUsuarioApp)
+	router.PATCH("/admin/usuarios-app/:id/estado", cambiarEstadoUsuarioApp)
 
 	// Configuración del servidor
 	server = &http.Server{
@@ -154,10 +153,17 @@ func auth(c *gin.Context) {
 		})
 		return
 	}
+	// Authenticate devuelve si la respuesta CHAP es válida y un posible error.
+	// Verifica que la respuesta CHAP corresponda al usuario.
+	autenticado, authErr := authfuncs.Authenticate(
+		json.User_id,
+		[32]byte(response),
+	)
 
-	if _, err = authfuncs.Authenticate(json.User_id, [32]byte(response)); err != nil {
-		c.AbortWithStatusJSON(http.StatusExpectationFailed, gin.H{
-			"error": err.Error(),
+	// Rechaza credenciales incorrectas o intentos expirados.
+	if authErr != nil || !autenticado {
+		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			"error": "Credenciales inválidas o intento de autenticación expirado.",
 		})
 		return
 	}

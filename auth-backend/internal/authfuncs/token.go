@@ -1,6 +1,7 @@
 package authfuncs
 
 import (
+	"fmt"
 	"github.com/gabrielmc05/sipinna-backend/auth-backend/internal/dboper"
 	"github.com/golang-jwt/jwt/v5"
 	"log"
@@ -35,18 +36,35 @@ func GenerateToken(user_id uint32) (string, error) {
 
 // VerifyToken verifica el JWT de un usuario con su firma.
 // NOTA: no me di cuenta que se puede obtener el ID directo del JWT.
-func VerifyToken(tokenString string, user_id uint32) (ok bool, err error) {
-	var token *jwt.Token
 
+func VerifyToken(tokenString string, user_id uint32) (bool, error) {
 	if len(tokenString) > 7 && tokenString[:7] == "Bearer " {
 		tokenString = tokenString[7:]
 	}
 
-	token, err = jwt.ParseWithClaims(tokenString, &jwt.RegisteredClaims{}, func(token *jwt.Token) (any, error) {
-		return dboper.GetUserSignatureKey(user_id)
-	})
-	if err != nil || !token.Valid {
+	claims := &jwt.RegisteredClaims{}
+
+	parsed, err := jwt.ParseWithClaims(
+		tokenString,
+		claims,
+		func(token *jwt.Token) (any, error) {
+			if token.Method != jwt.SigningMethodHS256 {
+				return nil, fmt.Errorf("algoritmo de firma no permitido")
+			}
+
+			return dboper.GetUserSignatureKey(user_id)
+		},
+	)
+	if err != nil {
 		return false, err
+	}
+
+	if !parsed.Valid || claims.ExpiresAt == nil {
+		return false, fmt.Errorf("token inválido o sin expiración")
+	}
+
+	if claims.Subject != strconv.FormatUint(uint64(user_id), 10) {
+		return false, fmt.Errorf("el token no corresponde al usuario")
 	}
 
 	return true, nil

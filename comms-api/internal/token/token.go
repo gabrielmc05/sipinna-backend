@@ -54,18 +54,16 @@ func Authenticate(authorization string) (uint32, error) {
 	return uint32(userID), nil
 }
 
-func VerifyToken(tokenString string, user_id uint32) (ok bool, err error) {
-	var token *jwt.Token
-
-	if len(tokenString) > 7 && tokenString[:7] == "Bearer " {
-		tokenString = tokenString[7:]
+func VerifyToken(tokenString string, user_id uint32) (bool, error) {
+	// Verifica la firma, la expiración y que la cuenta esté activa.
+	tokenUserID, err := Authenticate(tokenString)
+	if err != nil {
+		return false, err
 	}
 
-	token, err = jwt.ParseWithClaims(tokenString, &jwt.RegisteredClaims{}, func(token *jwt.Token) (any, error) {
-		return dboper.GetUserSignatureKey(user_id)
-	})
-	if err != nil || !token.Valid {
-		return false, err
+	// El ID del JWT debe coincidir con el usuario solicitado.
+	if tokenUserID != user_id {
+		return false, ErrInvalidToken
 	}
 
 	return true, nil

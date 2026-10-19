@@ -64,12 +64,26 @@ func NewUserSignatureKey(user_id uint32) (key []byte, err error) {
 	}
 
 	llave_firma = hex.EncodeToString(key)
+
 	if result, err = db.Exec(
-		"INSERT INTO token (id_usuario,llave_firma) VALUES (?,UNHEX(?)) ON DUPLICATE KEY UPDATE llave_firma=UNHEX(?)",
-		user_id, llave_firma, llave_firma); err != nil {
-		err = fmt.Errorf("Error: in query: %w", err)
+		`INSERT INTO token (id_usuario, llave_firma)
+		SELECT u.id_usuario, UNHEX(?)
+		FROM usuario u
+		WHERE u.id_usuario = ? AND u.es_activo = 1
+		ON DUPLICATE KEY UPDATE llave_firma = VALUES(llave_firma)`,
+		llave_firma, user_id,
+	); err != nil {
+		err = fmt.Errorf("Error en la consulta: %w", err)
 		log.Print(err)
 		return nil, err
+	}
+
+	if rowsAffected, err = result.RowsAffected(); err != nil {
+		return nil, err
+	}
+
+	if rowsAffected == 0 {
+		return nil, fmt.Errorf("no se pudo generar una firma para el usuario %d", user_id)
 	}
 
 	if lastInsertID, err = result.LastInsertId(); err != nil {
