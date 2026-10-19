@@ -59,7 +59,7 @@ CREATE TABLE `institucion` (
   `tipo` varchar(50) CHARACTER SET utf8mb3 COLLATE utf8mb3_uca1400_ai_ci NOT NULL,
   `correo` varchar(254) CHARACTER SET utf8mb3 COLLATE utf8mb3_uca1400_ai_ci DEFAULT NULL,
   `telefono` varchar(50) CHARACTER SET utf8mb3 COLLATE utf8mb3_uca1400_ai_ci DEFAULT NULL,
-  `direccion` varchar(100) CHARACTER SET utf8mb3 COLLATE utf8mb3_uca1400_ai_ci DEFAULT NULL,
+  `direccion` varchar(300) CHARACTER SET utf8mb3 COLLATE utf8mb3_uca1400_ai_ci DEFAULT NULL,
   `es_activo` tinyint(1) NOT NULL DEFAULT 1,
   PRIMARY KEY (`id_institucion`),
   UNIQUE KEY `uq_institucion_territorio_nombre_tipo` (`id_territorio`, `nombre`, `tipo`),
