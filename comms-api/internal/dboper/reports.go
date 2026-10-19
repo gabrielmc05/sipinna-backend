@@ -113,7 +113,7 @@ func CreateReport(report ReportCreation, folio, codeHash string) error {
 	}
 
 	for _, tag := range report.Tags {
-		db.Exec("CALL AsignarEtiquetaNuevoReporte(?,?,?)", folio, tag)
+		db.Exec("CALL AsignarEtiquetaNuevoReporte(?,?,?)", folio, tag.Name, tag.Type)
 	}
 
 	return nil

@@ -143,6 +143,7 @@ func CreateReport(c *gin.Context) {
 		Address:         request.Location.Address,
 		TerritoryID:     request.Location.TerritoryID,
 		Minors:          request.Minors,
+		Tags:            request.Tags,
 	}
 	var folio string
 	for range 3 {
