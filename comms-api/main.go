@@ -1,26 +1,17 @@
 package main
 
 import (
-<<<<<<< HEAD
 	"context"
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
-	ginadapter "github.com/awslabs/aws-lambda-go-api-proxy/gin"
-=======
-	//"context"
-	"log"
-	"net/http"
-
-	//"github.com/aws/aws-lambda-go/events"
-	//"github.com/aws/aws-lambda-go/lambda"
-	//ginadapter "github.com/awslabs/aws-lambda-go-api-proxy/gin"
->>>>>>> 1390d6d (Resolví un bug bien tonto)
-	"github.com/gabrielmc05/sipinna-backend/comms-api/internal/dboper"
-	"github.com/gabrielmc05/sipinna-backend/comms-api/internal/handlers"
-	"github.com/gin-gonic/gin"
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
+	ginadapter "github.com/awslabs/aws-lambda-go-api-proxy/gin"
+	"github.com/gabrielmc05/sipinna-backend/comms-api/internal/dboper"
+	"github.com/gabrielmc05/sipinna-backend/comms-api/internal/handlers"
+	"github.com/gin-gonic/gin"
 )
 
 /**
@@ -146,41 +137,17 @@ func newRouter() *gin.Engine {
 	return router
 }
 
-//var ginLambda *ginadapter.GinLambdaV2
-//
-//func init() {
-//	if err := dboper.Setup(); err != nil {
-//		log.Fatalf("connect to database: %v", err)
-//	}
-//	//defer func() {
-//	//	if err := dboper.CloseDB(); err != nil {
-//	//		log.Printf("close database: %v", err)
-//	//	}
-//	//}()
-//
-//	ginLambda = ginadapter.NewV2(newRouter())
-//}
-//
-//func handler(ctx context.Context, req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
-//	return ginLambda.ProxyWithContext(ctx, req)
-//}
-//
-//func main() {
-//	lambda.Start(handler)
-//}
+var ginLambda *ginadapter.GinLambdaV2
 
-func main() {
+func init() {
 	if err := dboper.Setup(); err != nil {
 		log.Fatalf("connect to database: %v", err)
 	}
-<<<<<<< HEAD
 	//defer func() {
 	//	if err := dboper.CloseDB(); err != nil {
 	//		log.Printf("close database: %v", err)
 	//	}
 	//}()
-
-	ginLambda = ginadapter.NewV2(newRouter())
 }
 
 func handler(ctx context.Context, req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
@@ -196,6 +163,7 @@ func handler(ctx context.Context, req events.APIGatewayV2HTTPRequest) (events.AP
 func main() {
 	// AWS Lambda proporciona esta variable automáticamente.
 	if os.Getenv("AWS_LAMBDA_RUNTIME_API") != "" {
+		ginLambda = ginadapter.NewV2(newRouter())
 		log.Println("Iniciando comms-api en AWS Lambda")
 		lambda.Start(handler)
 		return
@@ -214,12 +182,9 @@ func main() {
 	if err := router.Run(":" + port); err != nil {
 		log.Fatalf("No fue posible iniciar comms-api: %v", err)
 	}
-=======
 	defer func() {
 		if err := dboper.CloseDB(); err != nil {
 			log.Printf("close database: %v", err)
 		}
 	}()
-	newRouter().Run()
->>>>>>> 1390d6d (Resolví un bug bien tonto)
 }
