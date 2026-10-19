@@ -108,8 +108,9 @@ func newRouter() *gin.Engine {
 	// a un alimentador. No se restringe la asignación por institución
 	api.POST("/reportes/asignar/:folio", handlers.AssignReport)
 
-	// GET para obtener las evidencias de un reporte con autorización de personal.
-	api.GET("/reportes/:folio/evidencias", handlers.GetEvidence)
+	// DownloadEvidence permite visualizar o descargar una evidencia
+	// únicamente después de validar la autorización del usuario.
+	api.GET("/reportes/:folio/evidencias/:id/archivo", handlers.DownloadEvidence)
 
 	// GET para consultar la lista de reporte de un usuario en específico
 	// ListUserReports maneja la consulta de todos los reportes asociados a un usuario autenticado.
@@ -123,7 +124,6 @@ func newRouter() *gin.Engine {
 	// Si el usuario no tiene permiso para actualizar el reporte o si ocurre un error, devuelve un error adecuado.
 	api.PATCH("/reportes/:folio/estatus", handlers.UpdateReportStatus)
 
-
 	// Consultar la prioridad de un expediente.
 	// Administradores y alimentadores autorizados.
 	api.GET("/reportes/:folio/prioridad", handlers.GetReportPriority)
@@ -131,7 +131,6 @@ func newRouter() *gin.Engine {
 	// Modificar la prioridad de un expediente.
 	// Solo administradores autorizados.
 	api.PATCH("/reportes/:folio/prioridad", handlers.UpdateReportPriority)
-	
 
 	// GET de lista de instituciones
 	// Institutions maneja la consulta de todas las instituciones disponibles en la base de datos.

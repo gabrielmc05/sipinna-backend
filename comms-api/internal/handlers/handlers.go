@@ -447,6 +447,133 @@ func GetEvidence(c *gin.Context) {
 	}
 }
 
+/*
+DownloadEvidence entrega el archivo de una evidencia registrada.
+
+Verifica que:
+  - El usuario esté autenticado y autorizado.
+  - La evidencia pertenezca al expediente solicitado.
+  - La ruta corresponda al directorio de evidencias.
+  - El archivo exista físicamente.
+
+El archivo se entrega sin publicar el directorio de almacenamiento.
+*/
+func DownloadEvidence(c *gin.Context) {
+	userID, err := authenticateStaff(c)
+	if err != nil {
+		return
+	}
+
+	folio := strings.TrimSpace(c.Param("folio"))
+
+	evidenceID, err := strconv.ParseUint(c.Param("id"), 10, 32)
+	if err != nil || evidenceID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "id de evidencia inválido",
+		})
+		return
+	}
+
+	evidences, err := dboper.GetReportEvidences(userID, folio)
+
+	switch {
+	case errors.Is(err, dboper.ErrReportNotFound):
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "reporte no encontrado",
+		})
+		return
+
+	case errors.Is(err, dboper.ErrReportAccessDenied):
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "no tienes permiso para consultar esta evidencia",
+		})
+		return
+
+	case err != nil:
+		log.Printf("download evidence authorization: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "no fue posible consultar la evidencia",
+		})
+		return
+	}
+
+	var evidencePath string
+
+	for _, evidence := range evidences {
+		if uint64(evidence.ID) == evidenceID {
+			evidencePath = evidence.Path
+			break
+		}
+	}
+
+	if evidencePath == "" {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "evidencia no encontrada",
+		})
+		return
+	}
+
+	uploadDir := os.Getenv("UPLOAD_DIR")
+	if uploadDir == "" {
+		uploadDir = filepath.Join("uploads", "evidencias")
+	}
+
+	basePath, err := filepath.Abs(uploadDir)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "almacenamiento no disponible",
+		})
+		return
+	}
+
+	filePath, err := filepath.Abs(evidencePath)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "ruta de evidencia inválida",
+		})
+		return
+	}
+
+	relativePath, err := filepath.Rel(basePath, filePath)
+	if err != nil ||
+		relativePath == ".." ||
+		filepath.IsAbs(relativePath) ||
+		strings.HasPrefix(relativePath, ".."+string(os.PathSeparator)) {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "ruta de evidencia no permitida",
+		})
+		return
+	}
+
+	// Evitar seguir enlaces simbólicos.
+	fileInfo, err := os.Lstat(filePath)
+	if errors.Is(err, os.ErrNotExist) {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "el archivo de evidencia ya no está disponible",
+		})
+		return
+	}
+	if err != nil {
+		log.Printf("stat evidence file: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "no fue posible consultar el archivo",
+		})
+		return
+	}
+	if !fileInfo.Mode().IsRegular() {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "archivo de evidencia no permitido",
+		})
+		return
+	}
+
+	c.Header("X-Content-Type-Options", "nosniff")
+	c.Header("Cache-Control", "private, no-store")
+	c.Header("Content-Security-Policy", "sandbox")
+
+	c.File(filePath)
+}
+
 // GetTerritories devuelve los estados disponibles y los municipios, con filtros opcionales.
 func GetTerritories(c *gin.Context) {
 	var state, municipality *string
@@ -817,11 +944,17 @@ func UpdateReportStatus(c *gin.Context) {
 			c.JSON(http.StatusForbidden, gin.H{"error": "no tienes autorización para actualizar este expediente"})
 			return
 		}
-		if errors.Is(err, dboper.ErrReportNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "reporte no encontrado"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "no fue posible actualizar el estado del reporte"})
+		// Registra el error técnico únicamente en el servidor.
+		// No expone detalles de MariaDB al navegador.
+		log.Printf(
+			"update report status failed: %v",
+			err,
+		)
+
+		c.JSON(
+			http.StatusInternalServerError,
+			gin.H{"error": "no fue posible actualizar el estado del reporte"},
+		)
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"mensaje": "Estado del expediente actualizado a: " + request.Status})
@@ -882,10 +1015,22 @@ func validateReportRequest(request reportRequest) error {
 	return nil
 }
 
-// isReportStatus verifica si el estado proporcionado es uno de los estados válidos para un reporte.
+/*
+isReportStatus valida que el estado solicitado corresponda
+a uno de los valores oficiales definidos en expediente.estado.
+
+Se utiliza para evitar enviar estados incompatibles a MariaDB.
+*/
 func isReportStatus(status string) bool {
 	switch status {
-	case "Nuevo", "En revisión", "Asignado", "En investigación", "Canalizado a Procuraduría", "Cerrado", "Descartado":
+	case "Registrado",
+		"En revisión",
+		"En seguimiento",
+		"Canalizado",
+		"Concluido",
+		"Archivado",
+		"Cancelado",
+		"Reincidente":
 		return true
 	default:
 		return false
