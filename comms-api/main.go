@@ -95,6 +95,10 @@ func newRouter() *gin.Engine {
 	// a un alimentador. No se restringe la asignación por institución
 	api.POST("/reportes/asignar/:folio", handlers.AssignReport)
 
+	// GetEvidence consulta las evidencias registradas de un expediente.
+	// Valida la autenticación y los permisos del usuario.
+	api.GET("/reportes/:folio/evidencias", handlers.GetEvidence)
+
 	// DownloadEvidence permite visualizar o descargar una evidencia
 	// únicamente después de validar la autorización del usuario.
 	api.GET("/reportes/:folio/evidencias/:id/archivo", handlers.DownloadEvidence)
