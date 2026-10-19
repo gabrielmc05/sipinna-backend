@@ -29,8 +29,6 @@ func init() {
 	dboper.ChangeUserPassword(5, "cisco987") //alim
 	dboper.ChangeUserPassword(6, "cisco789") //user
 
-
-
 	//gin.SetMode(gin.ReleaseMode) // No sé por qué no funciona esto
 
 	router := gin.Default()
@@ -375,7 +373,10 @@ func user(c *gin.Context) {
 		"surname":      user_data.Surname,
 		"phone_number": user_data.Phone_number,
 		"user_id":      user_id,
+		"organizacion": user_data.Organizacion,
+		"municipio":    user_data.Municipio,
 	})
+
 }
 
 func userEdit(c *gin.Context) {

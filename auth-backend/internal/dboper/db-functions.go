@@ -184,7 +184,6 @@ func NewAdmin(admin *Admin) (user_id uint32, user_name string, err error) {
 	return user_id, user_name, nil
 }
 
-
 // ChangeUserPassword actualiza la contraseña de un usuario.
 //
 // Primero genera el hash SHA-256 y lo cifra usando
@@ -193,28 +192,28 @@ func NewAdmin(admin *Admin) (user_id uint32, user_name string, err error) {
 // Si el procesamiento falla, no modifica MariaDB.
 
 func ChangeUserPassword(user_id uint32, newPassword string) error {
-    encryptedHash, err := EncryptHashUserPassword(newPassword)
-    if err != nil {
-        return fmt.Errorf(
-            "error al procesar la nueva contraseña: %w",
-            err,
-        )
-    }
+	encryptedHash, err := EncryptHashUserPassword(newPassword)
+	if err != nil {
+		return fmt.Errorf(
+			"error al procesar la nueva contraseña: %w",
+			err,
+		)
+	}
 
-    _, err = db.Exec(
-        "UPDATE usuario SET hash_contrasenna = UNHEX(?) WHERE id_usuario = ?",
-        encryptedHash,
-        user_id,
-    )
+	_, err = db.Exec(
+		"UPDATE usuario SET hash_contrasenna = UNHEX(?) WHERE id_usuario = ?",
+		encryptedHash,
+		user_id,
+	)
 
-    if err != nil {
-        return fmt.Errorf(
-            "error al actualizar la contraseña: %w",
-            err,
-        )
-    }
+	if err != nil {
+		return fmt.Errorf(
+			"error al actualizar la contraseña: %w",
+			err,
+		)
+	}
 
-    return nil
+	return nil
 }
 
 func ChangeUserEmail(user_id uint32, newEmail string) (err error) {
@@ -245,22 +244,58 @@ func ChangeUserDatum(user_id uint32, field, newDatum string) (err error) {
 	return nil
 }
 
-// UserData se utiliza para obtener los datos personales de un usuario.
+/*
+UserData contiene la información del perfil de un usuario.
+
+Los campos de organización y municipio son opcionales porque
+no todos los usuarios necesariamente pertenecen a una institución.
+*/
 type UserData struct {
 	Name         string
 	Surname      string
 	Phone_number *string
+	Organizacion *string
+	Municipio    *string
 }
 
-// GetUserData recibe un ID y regresa los datos personales de un
-// usuario: nombre, apellidos y contraseña.
+/*
+GetUserData consulta los datos del usuario autenticado.
+
+Relaciona la cuenta con su institución y el territorio
+correspondiente, sin modificar información en MariaDB.
+*/
 func GetUserData(user_id uint32) (user_data UserData, err error) {
-	if err = db.QueryRow("SELECT nombre, apellidos, telefono FROM usuario WHERE id_usuario=?",
-		user_id).Scan(&user_data.Name, &user_data.Surname, &user_data.Phone_number); err != nil {
-		err = fmt.Errorf("Error: in query: %w", err)
+	const query = `
+		SELECT
+			u.nombre,
+			u.apellidos,
+			u.telefono,
+			i.nombre,
+			t.nombre
+		FROM usuario AS u
+		LEFT JOIN administrador AS a
+			ON a.id_usuario = u.id_usuario
+		LEFT JOIN institucion AS i
+			ON i.id_institucion = a.id_institucion
+		LEFT JOIN territorio AS t
+			ON t.id_territorio = i.id_territorio
+		WHERE u.id_usuario = ?
+	`
+
+	err = db.QueryRow(query, user_id).Scan(
+		&user_data.Name,
+		&user_data.Surname,
+		&user_data.Phone_number,
+		&user_data.Organizacion,
+		&user_data.Municipio,
+	)
+
+	if err != nil {
+		err = fmt.Errorf("error al consultar datos del usuario: %w", err)
 		log.Print(err)
 		return UserData{}, err
 	}
+
 	return user_data, nil
 }
 
