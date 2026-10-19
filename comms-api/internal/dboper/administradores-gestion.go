@@ -9,7 +9,21 @@ import (
 var (
 	ErrAdministradorNoEncontrado = errors.New("administrador no encontrado")
 	ErrAdministradorProtegido    = errors.New("no se puede desactivar la cuenta administradora principal")
+	ErrInstitucionNoDisponible   = errors.New("la institución no existe o está inactiva")
 )
+
+// DatosAlimentadorEditado contiene los datos personales e
+// institucionales que se utilizan al editar una cuenta.
+//
+// Se conserva este nombre porque EditarAdministradorActual
+// ya lo recibe como parámetro.
+type DatosAlimentadorEditado struct {
+	Nombre        string  `json:"nombre"`
+	Apellidos     string  `json:"apellidos"`
+	Correo        string  `json:"correo"`
+	Telefono      *string `json:"telefono"`
+	InstitucionID uint32  `json:"id_institucion"`
+}
 
 // AdministradorCuenta representa una cuenta institucional
 // cuyo rol en MariaDB es Administrador.
