@@ -61,7 +61,7 @@ func newRouter() *gin.Engine {
 	// registrando la información en la base de datos.
 	api.POST("/reportes/:folio/evidencias", handlers.UploadEvidence)
 
-	// GET para consultar un solo reporte con su folio y codigo
+	// POST para consultar un solo reporte con su folio y codigo
 	// ConsultReport maneja la consulta de un reporte específico utilizando el folio y un código privado.
 	// Valida la solicitud y devuelve la información del reporte si el código es correcto.
 	// Si el reporte no se encuentra o el código es incorrecto, devuelve un error adecuado
