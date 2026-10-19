@@ -3,6 +3,8 @@ module github.com/gabrielmc05/sipinna-backend/auth-API
 go 1.27.1
 
 require (
+	github.com/aws/aws-lambda-go v1.55.1
+	github.com/awslabs/aws-lambda-go-api-proxy v0.16.2
 	github.com/gin-gonic/gin v1.12.0
 	github.com/joho/godotenv v1.5.1
 )

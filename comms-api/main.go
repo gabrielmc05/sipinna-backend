@@ -1,9 +1,13 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
+	ginadapter "github.com/awslabs/aws-lambda-go-api-proxy/gin"
 	"github.com/gabrielmc05/sipinna-backend/comms-api/internal/dboper"
 	"github.com/gabrielmc05/sipinna-backend/comms-api/internal/handlers"
 	"github.com/gin-gonic/gin"
@@ -36,23 +40,6 @@ func corsMiddleware() gin.HandlerFunc {
 		}
 
 		c.Next()
-	}
-}
-
-func main() {
-	if err := dboper.Setup(); err != nil {
-		log.Fatalf("connect to database: %v", err)
-	}
-	defer func() {
-		if err := dboper.CloseDB(); err != nil {
-			log.Printf("close database: %v", err)
-		}
-	}()
-
-	router := newRouter()
-
-	if err := http.ListenAndServe(":8085", router); err != nil {
-		log.Fatalf("start HTTP server: %v", err)
 	}
 }
 
@@ -143,4 +130,27 @@ func newRouter() *gin.Engine {
 	api.PATCH("/instituciones/:id/estado", handlers.UpdateInstitutionStatus)
 
 	return router
+}
+
+var ginLambda *ginadapter.GinLambdaV2
+
+func init() {
+	if err := dboper.Setup(); err != nil {
+		log.Fatalf("connect to database: %v", err)
+	}
+	//defer func() {
+	//	if err := dboper.CloseDB(); err != nil {
+	//		log.Printf("close database: %v", err)
+	//	}
+	//}()
+
+	ginLambda = ginadapter.NewV2(newRouter())
+}
+
+func handler(ctx context.Context, req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
+	return ginLambda.ProxyWithContext(ctx, req)
+}
+
+func main() {
+	lambda.Start(handler)
 }

@@ -340,8 +340,7 @@ DELIMITER ;
 DELIMITER //
 CREATE PROCEDURE ConsultarReporte (
 	IN p_folio CHAR(15),
-	IN p_codigo_seguridad_hash CHAR(64)
-)
+	IN p_codigo_seguridad_hash VARCHAR(255))
 BEGIN
 	SELECT r.folio, e.estado, r.fecha_reporte, r.descripcion, COALESCE(u.direccion_texto, ''),
 		r.peligro_inmediato
@@ -349,7 +348,7 @@ BEGIN
 	INNER JOIN expediente AS e ON e.folio = r.folio
 	INNER JOIN ubicacion AS u ON u.folio = r.folio
 	WHERE r.folio = p_folio
-		AND r.codigo_seguridad_hash = p_codigo_seguridad_hash;
+		AND r.codigo_seguridad_hash = UNHEX(p_codigo_seguridad_hash);
 END
 //
 DELIMITER ;

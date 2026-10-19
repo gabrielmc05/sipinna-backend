@@ -1,7 +1,7 @@
 -- PARA RDS:
--- DROP DATABASE IF EXISTS sipinna_db;
--- CREATE DATABASE sipinna_db;
--- USE sipinna_db;
+DROP DATABASE IF EXISTS sipinna_db;
+CREATE DATABASE sipinna_db;
+USE sipinna_db;
 
 
 -- =========================================================
@@ -79,7 +79,7 @@ CREATE TABLE `reporte` (
   `folio` char(15) NOT NULL,
   `id_usuario` int(11) DEFAULT NULL,
   `correo_contacto` varchar(254) CHARACTER SET utf8mb3 COLLATE utf8mb3_uca1400_ai_ci DEFAULT NULL,
-  `codigo_seguridad_hash` varchar(255) NOT NULL,
+  `codigo_seguridad_hash` varbinary(255) NOT NULL,
   `descripcion` text NOT NULL,
   `fecha_reporte` timestamp NOT NULL DEFAULT current_timestamp(),
   `horario_aproximado` time DEFAULT NULL,

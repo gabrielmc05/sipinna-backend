@@ -1,14 +1,14 @@
 package main
 
 import (
-	// "context"
+	"context"
 	"errors"
 	"net/http"
 	"strconv"
 
-	// "github.com/aws/aws-lambda-go/events"
-	// "github.com/aws/aws-lambda-go/lambda"
-	//ginadapter "github.com/awslabs/aws-lambda-go-api-proxy/gin"
+	"github.com/aws/aws-lambda-go/events"
+	"github.com/aws/aws-lambda-go/lambda"
+	ginadapter "github.com/awslabs/aws-lambda-go-api-proxy/gin"
 	"github.com/gabrielmc05/sipinna-backend/auth-API/internal/authbackend"
 	"github.com/gin-gonic/gin"
 )
@@ -262,12 +262,10 @@ func registrarAlimentador(c *gin.Context) {
 	c.Data(http.StatusCreated, "application/json", response)
 }
 
-// var ginLambda *ginadapter.GinLambdaV2
-
-var router *gin.Engine
+var ginLambda *ginadapter.GinLambdaV2
 
 func init() {
-	router = gin.Default()
+	var router *gin.Engine = gin.Default()
 
 	// GET de login,
 	// loginChallenge, recibe correo y regresa un challenge
@@ -296,17 +294,13 @@ func init() {
 	router.POST("/Registrar/Admin/:id", requireAuthHeader, registrarAdmin)
 	router.POST("/Registrar/Alimentador/:id", requireAuthHeader, registrarAlimentador)
 
-	// ginLambda = ginadapter.NewV2(router)
+	ginLambda = ginadapter.NewV2(router)
+}
+
+func handler(ctx context.Context, req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
+	return ginLambda.ProxyWithContext(ctx, req)
 }
 
 func main() {
-	router.Run()
+	lambda.Start(handler)
 }
-
-// func handler(ctx context.Context, req events.APIGatewayV2HTTPRequest) (events.APIGatewayV2HTTPResponse, error) {
-// 	return ginLambda.ProxyWithContext(ctx, req)
-// }
-
-// func main() {
-// 	lambda.Start(handler)
-// }
