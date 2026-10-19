@@ -2,15 +2,15 @@ package main
 
 import (
 	"context"
-	"log"
-	"net/http"
-
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 	ginadapter "github.com/awslabs/aws-lambda-go-api-proxy/gin"
 	"github.com/gabrielmc05/sipinna-backend/comms-api/internal/dboper"
 	"github.com/gabrielmc05/sipinna-backend/comms-api/internal/handlers"
 	"github.com/gin-gonic/gin"
+	"log"
+	"net/http"
+	"os"
 )
 
 /**
@@ -151,6 +151,31 @@ func handler(ctx context.Context, req events.APIGatewayV2HTTPRequest) (events.AP
 	return ginLambda.ProxyWithContext(ctx, req)
 }
 
+/**
+ * main inicia comms-api según el entorno de ejecución.
+ *
+ * En AWS Lambda utiliza el adaptador de API Gateway V2.
+ * En desarrollo local inicia el servidor HTTP de Gin.
+ */
 func main() {
-	lambda.Start(handler)
+	// AWS Lambda proporciona esta variable automáticamente.
+	if os.Getenv("AWS_LAMBDA_RUNTIME_API") != "" {
+		log.Println("Iniciando comms-api en AWS Lambda")
+		lambda.Start(handler)
+		return
+	}
+
+	// Ejecución local.
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8085"
+	}
+
+	log.Printf("Iniciando comms-api local en puerto %s", port)
+
+	router := newRouter()
+
+	if err := router.Run(":" + port); err != nil {
+		log.Fatalf("No fue posible iniciar comms-api: %v", err)
+	}
 }
