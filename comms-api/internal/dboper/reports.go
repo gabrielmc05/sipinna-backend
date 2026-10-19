@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/go-sql-driver/mysql"
 )
@@ -60,6 +61,7 @@ type HistoricalReport struct {
 	TerritoryID      uint32    `json:"id_territorio"`
 	AssignedFeederID *uint32   `json:"id_alimentador"`
 	ImmediateDanger  string    `json:"peligro_inmediato"`
+	Tags             []Tag     `json:"etiquetas"`
 }
 
 type ReportSummary struct {
@@ -268,6 +270,47 @@ func GetReportHistory(userID uint32, status *string, territoryID *uint32, dateOr
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("iterate report history: %w", err)
 	}
+	// Cerramos el resultado del procedimiento antes de realizar otra consulta.
+	if err := rows.Close(); err != nil {
+		return nil, fmt.Errorf("close report history: %w", err)
+	}
+	if len(reports) == 0 {
+		return reports, nil
+	}
+
+	// Solo consultamos etiquetas de folios ya autorizados por ObtenerReportes.
+	// La consulta es única para evitar una petición por cada expediente.
+	placeholders := make([]string, len(reports))
+	arguments := make([]any, len(reports))
+	indices := make(map[string]int, len(reports))
+	for index := range reports {
+		reports[index].Tags = make([]Tag, 0)
+		placeholders[index] = "?"
+		arguments[index] = reports[index].Folio
+		indices[reports[index].Folio] = index
+	}
+	tagRows, err := db.Query(
+		"SELECT folio, nombre_etiqueta, tipo FROM reporteetiqueta WHERE folio IN ("+
+			strings.Join(placeholders, ",")+") ORDER BY tipo, nombre_etiqueta",
+		arguments...,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("get report history tags: %w", err)
+	}
+	defer tagRows.Close()
+	for tagRows.Next() {
+		var folio string
+		var tag Tag
+		if err := tagRows.Scan(&folio, &tag.Name, &tag.Type); err != nil {
+			return nil, fmt.Errorf("scan report history tag: %w", err)
+		}
+		if index, ok := indices[folio]; ok {
+			reports[index].Tags = append(reports[index].Tags, tag)
+		}
+	}
+	if err := tagRows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate report history tags: %w", err)
+	}
 	return reports, nil
 }
 
@@ -353,4 +396,201 @@ func GetUserSignatureKey(userID uint32) ([]byte, error) {
 		return nil, fmt.Errorf("get user signing key: %w", err)
 	}
 	return key, nil
+}
+
+// EtiquetaCatalogo representa una etiqueta del catálogo
+// institucional de MariaDB.
+type EtiquetaCatalogo struct {
+	Name   string `json:"nombre_etiqueta"`
+	Type   string `json:"tipo"`
+	Active bool   `json:"es_activo"`
+}
+
+// ListarCatalogoEtiquetas devuelve el catálogo completo,
+// incluidas las etiquetas que aún no tienen reportes.
+func ListarCatalogoEtiquetas() ([]EtiquetaCatalogo, error) {
+	rows, err := db.Query(
+		`SELECT nombre_etiqueta, tipo, es_activo
+		 FROM etiqueta
+		 ORDER BY tipo, nombre_etiqueta`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("consultar etiquetas: %w", err)
+	}
+	defer rows.Close()
+
+	resultado := make([]EtiquetaCatalogo, 0)
+
+	for rows.Next() {
+		var etiqueta EtiquetaCatalogo
+		if err := rows.Scan(
+			&etiqueta.Name,
+			&etiqueta.Type,
+			&etiqueta.Active,
+		); err != nil {
+			return nil, fmt.Errorf("leer etiqueta: %w", err)
+		}
+		resultado = append(resultado, etiqueta)
+	}
+
+	return resultado, rows.Err()
+}
+
+// CrearEtiquetaCatalogo registra una etiqueta nueva.
+// La restricción de clave primaria evita duplicados.
+func CrearEtiquetaCatalogo(nombre, tipo string) error {
+	_, err := db.Exec(
+		`INSERT INTO etiqueta
+		 (nombre_etiqueta, tipo, es_activo)
+		 VALUES (?, ?, 1)`,
+		nombre,
+		tipo,
+	)
+	if err != nil {
+		return fmt.Errorf("crear etiqueta: %w", err)
+	}
+	return nil
+}
+
+// RenombrarEtiquetaCatalogo cambia el nombre de una etiqueta
+// manteniendo las asociaciones de los reportes.
+//
+// Se inserta primero la nueva etiqueta porque la clave
+// foránea de reporteetiqueta no tiene ON UPDATE CASCADE.
+func RenombrarEtiquetaCatalogo(
+	tipo, nombreAnterior, nombreNuevo string,
+) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("iniciar edición: %w", err)
+	}
+	defer tx.Rollback()
+
+	var activa bool
+	err = tx.QueryRow(
+		`SELECT es_activo
+		 FROM etiqueta
+		 WHERE tipo = ? AND nombre_etiqueta = ?
+		 FOR UPDATE`,
+		tipo,
+		nombreAnterior,
+	).Scan(&activa)
+
+	if err != nil {
+		return fmt.Errorf("buscar etiqueta: %w", err)
+	}
+
+	if nombreAnterior == nombreNuevo {
+		return nil
+	}
+
+	_, err = tx.Exec(
+		`INSERT INTO etiqueta
+		 (nombre_etiqueta, tipo, es_activo)
+		 VALUES (?, ?, ?)`,
+		nombreNuevo,
+		tipo,
+		activa,
+	)
+	if err != nil {
+		return fmt.Errorf("registrar nuevo nombre: %w", err)
+	}
+
+	_, err = tx.Exec(
+		`UPDATE reporteetiqueta
+		 SET nombre_etiqueta = ?
+		 WHERE nombre_etiqueta = ? AND tipo = ?`,
+		nombreNuevo,
+		nombreAnterior,
+		tipo,
+	)
+	if err != nil {
+		return fmt.Errorf("actualizar asociaciones: %w", err)
+	}
+
+	_, err = tx.Exec(
+		`DELETE FROM etiqueta
+		 WHERE nombre_etiqueta = ? AND tipo = ?`,
+		nombreAnterior,
+		tipo,
+	)
+	if err != nil {
+		return fmt.Errorf("retirar nombre anterior: %w", err)
+	}
+
+	return tx.Commit()
+}
+
+// AplicarEtiquetaReportes aplica una etiqueta existente
+// a varios expedientes en una transacción.
+//
+// Las etiquetas de prioridad son excluyentes: antes de
+// aplicar una nueva prioridad, sustituye la anterior.
+//
+// Categoría y Riesgo admiten varias etiquetas.
+func AplicarEtiquetaReportes(
+	folios []string,
+	nombre, tipo string,
+) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("iniciar aplicación: %w", err)
+	}
+	defer tx.Rollback()
+
+	var activa bool
+	err = tx.QueryRow(
+		`SELECT es_activo
+		 FROM etiqueta
+		 WHERE nombre_etiqueta = ? AND tipo = ?`,
+		nombre,
+		tipo,
+	).Scan(&activa)
+
+	if err != nil {
+		return fmt.Errorf("consultar etiqueta: %w", err)
+	}
+	if !activa {
+		return fmt.Errorf("la etiqueta está inactiva")
+	}
+
+	// Comprobar todos los folios antes de modificar datos.
+	for _, folio := range folios {
+		var existente string
+		err = tx.QueryRow(
+			`SELECT folio FROM reporte
+			 WHERE folio = ? FOR UPDATE`,
+			folio,
+		).Scan(&existente)
+		if err != nil {
+			return fmt.Errorf("folio %s: %w", folio, err)
+		}
+	}
+
+	for _, folio := range folios {
+		if tipo == "Prioridad" {
+			_, err = tx.Exec(
+				`DELETE FROM reporteetiqueta
+				 WHERE folio = ? AND tipo = 'Prioridad'`,
+				folio,
+			)
+			if err != nil {
+				return fmt.Errorf("reemplazar prioridad: %w", err)
+			}
+		}
+
+		_, err = tx.Exec(
+			`INSERT IGNORE INTO reporteetiqueta
+			 (folio, nombre_etiqueta, tipo)
+			 VALUES (?, ?, ?)`,
+			folio,
+			nombre,
+			tipo,
+		)
+		if err != nil {
+			return fmt.Errorf("asignar etiqueta: %w", err)
+		}
+	}
+
+	return tx.Commit()
 }

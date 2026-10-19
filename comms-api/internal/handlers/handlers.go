@@ -1131,3 +1131,195 @@ func randomString(length int, alphabet string) (string, error) {
 	}
 	return result.String(), nil
 }
+
+// autorizarGestionEtiquetas verifica que el usuario tenga
+// JWT válido y rol Administrador en MariaDB.
+func autorizarGestionEtiquetas(c *gin.Context) bool {
+	userID, err := authenticateStaff(c)
+	if err != nil {
+		return false
+	}
+
+	rol, err := dboper.GetStaffRole(userID)
+	if err != nil {
+		respondStaffRoleError(c, err)
+		return false
+	}
+
+	if rol != "Administrador" {
+		c.JSON(http.StatusForbidden, gin.H{
+			"error": "solo administradores pueden gestionar etiquetas",
+		})
+		return false
+	}
+	return true
+}
+
+// tipoEtiquetaValido limita las modificaciones a los tipos
+// permitidos en la relación reporteetiqueta.
+func tipoEtiquetaValido(tipo string) bool {
+	return tipo == "Categoria" ||
+		tipo == "Riesgo" ||
+		tipo == "Prioridad"
+}
+
+// ListTags devuelve el catálogo real de etiquetas.
+func ListTags(c *gin.Context) {
+	if !autorizarGestionEtiquetas(c) {
+		return
+	}
+
+	etiquetas, err := dboper.ListarCatalogoEtiquetas()
+	if err != nil {
+		log.Printf("listar etiquetas: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "no fue posible consultar etiquetas",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, etiquetas)
+}
+
+// CreateTag registra una etiqueta nueva en el catálogo.
+func CreateTag(c *gin.Context) {
+	if !autorizarGestionEtiquetas(c) {
+		return
+	}
+
+	var body struct {
+		Name string `json:"nombre_etiqueta" binding:"required"`
+		Type string `json:"tipo" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "nombre y tipo son obligatorios",
+		})
+		return
+	}
+
+	body.Name = strings.TrimSpace(body.Name)
+	if len([]rune(body.Name)) == 0 ||
+		len([]rune(body.Name)) > 50 ||
+		!tipoEtiquetaValido(body.Type) {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "nombre o tipo de etiqueta inválido",
+		})
+		return
+	}
+
+	if err := dboper.CrearEtiquetaCatalogo(
+		body.Name, body.Type,
+	); err != nil {
+		log.Printf("crear etiqueta: %v", err)
+		c.JSON(http.StatusConflict, gin.H{
+			"error": "no se pudo crear; comprueba si ya existe",
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"message": "etiqueta registrada",
+	})
+}
+
+// RenameTag actualiza el nombre de una etiqueta del catálogo
+// y mantiene las asociaciones a expedientes.
+func RenameTag(c *gin.Context) {
+	if !autorizarGestionEtiquetas(c) {
+		return
+	}
+
+	var body struct {
+		Type    string `json:"tipo" binding:"required"`
+		Current string `json:"nombre_actual" binding:"required"`
+		New     string `json:"nombre_nuevo" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "datos de edición inválidos",
+		})
+		return
+	}
+
+	body.Current = strings.TrimSpace(body.Current)
+	body.New = strings.TrimSpace(body.New)
+
+	if !tipoEtiquetaValido(body.Type) ||
+		body.Current == "" ||
+		body.New == "" ||
+		len([]rune(body.New)) > 50 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "nombre o tipo inválido",
+		})
+		return
+	}
+
+	if err := dboper.RenombrarEtiquetaCatalogo(
+		body.Type, body.Current, body.New,
+	); err != nil {
+		log.Printf("renombrar etiqueta: %v", err)
+		c.JSON(http.StatusConflict, gin.H{
+			"error": "no se pudo renombrar la etiqueta",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "etiqueta actualizada",
+	})
+}
+
+// ApplyTags asigna una etiqueta del catálogo a uno
+// o varios expedientes seleccionados.
+func ApplyTags(c *gin.Context) {
+	if !autorizarGestionEtiquetas(c) {
+		return
+	}
+
+	var body struct {
+		Folios []string `json:"folios" binding:"required,min=1"`
+		Name   string   `json:"nombre_etiqueta" binding:"required"`
+		Type   string   `json:"tipo" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "selecciona reportes y una etiqueta",
+		})
+		return
+	}
+
+	body.Name = strings.TrimSpace(body.Name)
+	if !tipoEtiquetaValido(body.Type) ||
+		body.Name == "" ||
+		len(body.Folios) > 100 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "solicitud de etiquetas inválida",
+		})
+		return
+	}
+
+	for i, folio := range body.Folios {
+		body.Folios[i] = strings.TrimSpace(folio)
+		if body.Folios[i] == "" ||
+			len(body.Folios[i]) > 15 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": "folio inválido",
+			})
+			return
+		}
+	}
+
+	if err := dboper.AplicarEtiquetaReportes(
+		body.Folios, body.Name, body.Type,
+	); err != nil {
+		log.Printf("aplicar etiquetas: %v", err)
+		c.JSON(http.StatusConflict, gin.H{
+			"error": "no se pudo aplicar la etiqueta",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "etiqueta aplicada correctamente",
+	})
+}

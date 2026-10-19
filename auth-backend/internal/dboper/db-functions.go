@@ -24,7 +24,8 @@ func GetUserPasswordHash(user_id uint32) (passwordHash []byte, err error) {
 	}
 
 	if passwordHashString, err = DecryptUserPasswordHash(hash_contrasenna); err != nil {
-		log.Fatal(err)
+		log.Printf("Error al descifrar el hash del usuario %d: %v", user_id, err)
+		return nil, fmt.Errorf("no fue posible descifrar el hash de contraseña: %w", err)
 	}
 
 	return []byte(passwordHashString), nil

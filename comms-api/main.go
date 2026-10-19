@@ -134,6 +134,12 @@ func newRouter() *gin.Engine {
 	api.PATCH("/instituciones/:id", handlers.UpdateInstitution)
 	api.PATCH("/instituciones/:id/estado", handlers.UpdateInstitutionStatus)
 
+	// Catálogo y asignación de etiquetas para administradores.
+	api.GET("/etiquetas", handlers.ListTags)
+	api.POST("/etiquetas", handlers.CreateTag)
+	api.PATCH("/etiquetas", handlers.RenameTag)
+	api.POST("/etiquetas/aplicar", handlers.ApplyTags)
+
 	return router
 }
 

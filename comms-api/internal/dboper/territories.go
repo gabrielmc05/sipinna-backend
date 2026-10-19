@@ -20,13 +20,15 @@ type TerritoryOptions struct {
 }
 
 type Feeder struct {
-	ID            uint32  `json:"id_usuario"`
-	Name          string  `json:"nombre"`
-	Surname       string  `json:"apellidos"`
-	Email         string  `json:"correo"`
-	Phone         *string `json:"telefono"`
-	InstitutionID uint32  `json:"id_institucion"`
-	Institution   string  `json:"institucion"`
+	ID                uint32  `json:"id_usuario"`
+	Name              string  `json:"nombre"`
+	Surname           string  `json:"apellidos"`
+	Email             string  `json:"correo"`
+	Phone             *string `json:"telefono"`
+	InstitutionID     uint32  `json:"id_institucion"`
+	Institution       string  `json:"institucion"`
+	IsActive          bool    `json:"es_activo"`
+	InstitutionActive bool    `json:"institucion_activa"`
 }
 
 type MapReport struct {
@@ -102,15 +104,38 @@ func GetTerritory(id uint32) (Territory, error) {
 }
 
 func GetFeeders() ([]Feeder, error) {
-	rows, err := db.Query("CALL ObtenerAlimentadores()")
+	const query = `SELECT
+		u.id_usuario,
+		u.nombre,
+		u.apellidos,
+		u.correo,
+		u.telefono,
+		i.id_institucion,
+		i.nombre,
+		u.es_activo,
+		i.es_activo
+	FROM administrador AS a
+	INNER JOIN usuario AS u
+		ON u.id_usuario = a.id_usuario
+	INNER JOIN institucion AS i
+		ON i.id_institucion = a.id_institucion
+	WHERE a.rol = 'Alimentador'
+	ORDER BY u.apellidos ASC, u.nombre ASC, u.id_usuario ASC`
+
+	rows, err := db.Query(query)
 	if err != nil {
-		return nil, fmt.Errorf("get feeders: %w", err)
+		return nil, fmt.Errorf(
+			"get feeders: %w",
+			err,
+		)
 	}
 	defer rows.Close()
 
 	feeders := make([]Feeder, 0)
+
 	for rows.Next() {
 		var feeder Feeder
+
 		if err := rows.Scan(
 			&feeder.ID,
 			&feeder.Name,
@@ -119,14 +144,25 @@ func GetFeeders() ([]Feeder, error) {
 			&feeder.Phone,
 			&feeder.InstitutionID,
 			&feeder.Institution,
+			&feeder.IsActive,
+			&feeder.InstitutionActive,
 		); err != nil {
-			return nil, fmt.Errorf("scan feeder: %w", err)
+			return nil, fmt.Errorf(
+				"scan feeder: %w",
+				err,
+			)
 		}
+
 		feeders = append(feeders, feeder)
 	}
+
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("iterate feeders: %w", err)
+		return nil, fmt.Errorf(
+			"iterate feeders: %w",
+			err,
+		)
 	}
+
 	return feeders, nil
 }
 
