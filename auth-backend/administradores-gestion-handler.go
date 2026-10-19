@@ -141,7 +141,7 @@ func editarAdministradorAdmin(c *gin.Context) {
 
 	default:
 		c.JSON(http.StatusOK, gin.H{
-			"message": "Administrador actualizado en MariaDB.",
+			"message": "Administrador actualizado.",
 		})
 	}
 }
