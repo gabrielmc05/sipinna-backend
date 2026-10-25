@@ -36,7 +36,7 @@ func NewCHAP(passwordHash []byte) (CHAP, error) {
 	)
 
 	if _, err := rand.Read(challenge); err != nil {
-		err = fmt.Errorf("Error while generating challenge: %s", err)
+		err = fmt.Errorf("Error while generating challenge: %w", err)
 		log.Print(err)
 		return CHAP{}, err
 	}

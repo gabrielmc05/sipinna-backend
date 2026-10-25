@@ -21,7 +21,7 @@ func EncryptHashUserPassword(password string) (encryptedHash string, err error) 
 
 	nonce = make([]byte, keys.GetDBCipherGCM().NonceSize())
 	if _, err = rand.Read(nonce); err != nil {
-		log.Printf("Nonce (random 32 bytes) could not be generated: %w.", err)
+		log.Printf("Nonce (random 32 bytes) could not be generated: %s.", err)
 		return "", err
 	}
 
@@ -59,7 +59,7 @@ func NewUserSignatureKey(user_id uint32) (key []byte, err error) {
 
 	key = make([]byte, 32)
 	if _, err = rand.Read(key); err != nil {
-		log.Printf("Error at creating signature key for user with id %d: %w", user_id, err)
+		log.Printf("Error at creating signature key for user with id %d: %s", user_id, err)
 		return nil, err
 	}
 

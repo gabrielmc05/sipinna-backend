@@ -161,7 +161,7 @@ func NewAdmin(admin *Admin) (user_id uint32, user_name string, err error) {
 	}
 
 	if encryptedHash, err = EncryptHashUserPassword(admin.Password); err != nil {
-		log.Printf("Error at creating encrypting user's password hash: %w", err)
+		log.Printf("Error at creating encrypting user's password hash: %s", err)
 		return 0, "", err
 	}
 
