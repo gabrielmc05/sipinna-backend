@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/mail"
+	"os"
 	"strconv"
 	"time"
 
@@ -23,6 +24,13 @@ func init() {
 	if err := dboper.Setup(); err != nil {
 		log.Fatalf("The connection to the database has failed: %s", err)
 		defer dboper.CloseDB()
+	}
+	if initialPassword, ok := os.LookupEnv("ROOT_ADMIN_INITIAL_PASSWORD"); ok {
+		dboper.ChangeUserPassword(3, initialPassword)
+		log.Printf("Root admin password's has been changed to: %s.", initialPassword)
+	} else {
+		dboper.ChangeUserPassword(3, "administrador12345")
+		log.Println("Root admin password's has been changed to: administrador12345.")
 	}
 
 	//gin.SetMode(gin.ReleaseMode) // No sé por qué no funciona esto

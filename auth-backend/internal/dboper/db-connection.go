@@ -20,11 +20,6 @@ func init() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatalf("Error loading .env file: %s.", err)
 	}
-	if initialPassword, ok := os.LookupEnv("ROOT_ADMIN_INITIAL_PASSWORD"); ok {
-		ChangeUserPassword(3, initialPassword)
-	} else {
-		ChangeUserPassword(3, "administrador12345")
-	}
 }
 
 // Setup se usa para hacer la conexión con la respectiva base de datos
