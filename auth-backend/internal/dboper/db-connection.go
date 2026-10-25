@@ -8,7 +8,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gabrielmc05/sipinna-backend/auth-backend/internal/dboper"
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 
@@ -21,11 +20,10 @@ func init() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatalf("Error loading .env file: %s.", err)
 	}
-
 	if initialPassword, ok := os.LookupEnv("ROOT_ADMIN_INITIAL_PASSWORD"); ok {
-		dboper.ChangeUserPassword(3, initialPassword)
+		ChangeUserPassword(3, initialPassword)
 	} else {
-		dboper.ChangeUserPassword(3, "administrador12345")
+		ChangeUserPassword(3, "administrador12345")
 	}
 }
 
