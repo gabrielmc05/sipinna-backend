@@ -48,6 +48,39 @@
 ### Instancia Lambda (comms-API)
 
 ### Instancia RDS
+1. En la consola de **RDS**, desplegar el panel izquierdo y hacer click en **Databases**.
+2. Hacer click en **Create database**.
+3. En **Choose a database creation method**, seleccionar **Standard create**.
+4. En **Engine options**, seleccionar **MariaDB** y una versión compatible con el esquema del proyecto (la base usa características y collations propias de MariaDB).
+5. En **Templates**, seleccionar la opción que corresponda al entorno y presupuesto de la administración.
+6. En **Settings**:
+    - En **DB instance identifier**, ingresar un nombre adecuado (se sugiere: _sipinna-db_).
+    - Configurar las credenciales administrativas y almacenarlas en un lugar seguro. No reutilizar contraseñas de otros servicios.
+7. En **Instance configuration** y **Storage**, seleccionar la capacidad adecuada para el uso esperado. Para una primera instalación municipal, puede conservarse la configuración recomendada por AWS y ajustarse posteriormente.
+8. En **Connectivity**:
+    - Seleccionar la misma **VPC** que usa la instancia EC2 que ejecutará los servicios.
+    - En **Public access**, seleccionar **No**.
+    - En **VPC security group (firewall)**, crear o seleccionar un grupo de seguridad para RDS.
+    - En las reglas de entrada del grupo de seguridad, permitir **MYSQL/Aurora (TCP 3306)** únicamente desde el grupo de seguridad de la instancia EC2. No abrir el puerto a todas las direcciones de Internet.
+9. Desplegar **Additional configuration** y, en **Initial database name**, ingresar `sipinna_db`.
+10. Revisar el resumen y hacer click en **Create database**. Esperar a que el estado de la instancia sea **Available**.
+11. En **Connectivity & security**, copiar el **Endpoint** y el puerto de la instancia. El puerto predeterminado de MariaDB en RDS es `3306`.
+12. Conectarse al endpoint desde la instancia EC2 o desde una máquina autorizada temporalmente por el grupo de seguridad, y cargar los archivos SQL del proyecto, en este orden:
+    1. `db/schema.sql`
+    2. `db/inserts_iniciales.sql`
+    3. `db/procedimientos.sql`
+    
+    **Importante:** `schema.sql` elimina y vuelve a crear `sipinna_db`; ejecutarlo solo durante la instalación inicial o después de contar con un respaldo, ya que elimina los datos existentes.
+    
+    Si la carga se realiza desde una computadora administrativa, permitir temporalmente el puerto `3306` solo desde su dirección IP y retirar esa regla al terminar.
+13. Crear en la base de datos el usuario de aplicación `sipinna_admin` y otorgarle los permisos necesarios únicamente sobre `sipinna_db`. Los servicios de `auth-backend` y `comms-api` usan este nombre de usuario.
+14. Descargar el certificado CA vigente para RDS desde la documentación oficial de AWS y guardar el bundle como `global-bundle.pem` en el directorio de ejecución de cada servicio que se conecte a la base. Los servicios configuran TLS y esperan encontrar ese archivo.
+15. Configurar en el entorno de `auth-backend` y `comms-api` los datos de conexión:
+    - `MARIADB_ADDRESS`: endpoint de RDS seguido de `:3306` (por ejemplo, `sipinna-db.xxxxxxxxxxxx.region.rds.amazonaws.com:3306`).
+    - `MARIADB_DATABASE`: `sipinna_db`.
+    - `MARIADB_ROOT_PASSWORD`: contraseña asignada al usuario de aplicación `sipinna_admin` (el código actual conserva este nombre de variable).
+    
+    No almacenar contraseñas en el repositorio. Verificar la conexión desde EC2 antes de iniciar los servicios.
 
 ---
 

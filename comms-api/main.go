@@ -75,7 +75,7 @@ func newRouter() *gin.Engine {
 	// GET para obtener territorios; permite filtrar por estado y municipio.
 	api.GET("/territorios", handlers.GetTerritories)
 	api.GET("/territorios/:id", handlers.GetTerritory)
-
+	
 	// GET para consultar las cuentas de alimentadores (solo administradores).
 	api.GET("/usuario/alimentadores", handlers.GetFeeders)
 
@@ -127,7 +127,7 @@ func newRouter() *gin.Engine {
 	// GET de lista de instituciones
 	// Institutions maneja la consulta de todas las instituciones disponibles en la base de datos.
 	// Devuelve la lista de instituciones en formato JSON. Si ocurre un error al consultar la base de datos,
-	// devuelve un error adecuado.
+	// devuelve un error adecuado. 
 	api.GET("/instituciones", handlers.Institutions)
 	api.GET("/instituciones/:id", handlers.InstitutionByID)
 	api.POST("/instituciones", handlers.CreateInstitution)
