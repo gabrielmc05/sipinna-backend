@@ -74,7 +74,7 @@ func init() {
 
 	// Configuración del servidor
 	server = &http.Server{
-		Addr:         ":8081",
+		Addr:         ":8080",
 		Handler:      router,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
@@ -87,7 +87,7 @@ func init() {
 func main() {
 	defer dboper.CloseDB()
 
-	log.Println("Iniciando Auth Backend en el puerto 8081…")
+	log.Println("Iniciando Auth Backend en el puerto 8080…")
 
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Error al iniciar el servidor: %s.", err)

@@ -2,7 +2,7 @@
 
 ---
 
-**¡Atención!** Por motivos de convención, los comandos, secciones y opciones cuyo uso se implique para los servicios necesarios, se redactarán en su versión inglesa.
+**==¡Atención!==** Por motivos de convención, los comandos, secciones y opciones cuyo uso se implique para los servicios necesarios, se redactarán en su versión inglesa.
 
 ## Levantar servicios de AWS
 **Prerrequisitos:**
@@ -12,9 +12,9 @@
 - Dado que no se mencione la alteración o selección de una configuración adicional, queda a disposición de las necesidades de la administración. Sin embargo, se recomienda dejarlos con su valor por defecto.
 
 ### Instancia EC2
-1. En la consola de EC2 desplegar el panel izquierdo, y en la sección **Instances**, hacer click en **Instances**. 
+1. En la consola de **EC2** desplegar el panel izquierdo, y en la sección **Instances**, hacer click en **Instances**. 
 2. Hacer click en el botón **Launch Instances**.
-3. En **Name and tags**, ingresar un nombre adecuado (se sugiere: _auth-backend_).
+3. En **Name and tags**, ingresar un nombre adecuado (se sugiere: _sipinna-auth-backend_).
 4. Desplegar **Application and OS Images (Amazon Machine Image)**  y en abrir la subsección **Quick Start**.
     - Seleccionar _Amazon Linux_.
     - En **Amazon Machine Image** seleccionar _Amazon Linux 2023 kernel-6.18 AMI_.
@@ -44,10 +44,10 @@
     - Hacer click en **Launch instance**. 
 
 ### Instancia Lambda (auth-API)
-1. En la consola de Lambda desplegar el panel izquierdo, y hacer click en **Event functions**. 
+1. En la consola de **Lambda** desplegar el panel izquierdo, y hacer click en **Event functions**. 
 2. Hacer click en el botón **Create Event Function**.
 3. En **Basic information**:
-    - En **Function name** ingresar un nombre adecuado (se sugiere: _auth-api_).
+    - En **Function name** ingresar un nombre adecuado (se sugiere: _sipinna-auth-api_).
     - En **Runtime** desplegar las opciones y seleccionar _Amazon Linux 2023_.
 4. En **Custom settings**, desplegar **Additional settings**.
     - En la sección **General**, marcar _ARM64 architecture_.
@@ -69,10 +69,10 @@
 5. Hacer click en **Create Event Function**.
 
 ### Instancia Lambda (comms-API)
-1. En la consola de Lambda desplegar el panel izquierdo, y hacer click en **Event functions**. 
+1. En la consola de **Lambda** desplegar el panel izquierdo, y hacer click en **Event functions**. 
 2. Hacer click en el botón **Create Event Function**.
 3. En **Basic information**:
-    - En **Function name** ingresar un nombre adecuado (se sugiere: _comms-api_).
+    - En **Function name** ingresar un nombre adecuado (se sugiere: _sipinna-comms-api_).
     - En **Runtime** desplegar las opciones y seleccionar _Amazon Linux 2023_.
 4. En **Custom settings**, desplegar **Additional settings**.
     - En la sección **General**, marcar _ARM64 architecture_.
@@ -107,13 +107,13 @@
     - En **Public access**, seleccionar **No**.
     - En **VPC security group (firewall)**, crear o seleccionar un grupo de seguridad para RDS.
     - En las reglas de entrada del grupo de seguridad, permitir **MYSQL/Aurora (TCP 3306)** únicamente desde el grupo de seguridad de la instancia EC2. No abrir el puerto a todas las direcciones de Internet.
-9. Desplegar **Additional configuration** y, en **Initial database name**, ingresar `sipinna_db`.
+9. Desplegar **Additional configuration** y, en **Initial database name**, ingresar _sipinna_db_.
 10. Revisar el resumen y hacer click en **Create database**. Esperar a que el estado de la instancia sea **Available**.
 ---
 
 ## Instalación y configuración de los programas
 
-### Configuración de la conexión a RDS
+### Configuración de RDS y comprobación de la conexión {#config-rds}
 1. En la consola de **RDS**, abrir la instancia creada y, en **Connectivity & security**, copiar el **Endpoint** y el puerto. El puerto predeterminado de MariaDB en RDS es `3306`.
 2. Conectarse al endpoint desde la instancia EC2 o desde una máquina autorizada temporalmente por el grupo de seguridad, y cargar los archivos SQL del proyecto, en este orden:
     1. `db/schema.sql`
@@ -131,3 +131,89 @@
     - `MARIADB_ROOT_PASSWORD`: contraseña asignada al usuario de aplicación `sipinna_admin` (el código actual conserva este nombre de variable).
     
     No almacenar contraseñas en el repositorio. Verificar la conexión desde EC2 antes de iniciar los servicios.
+
+### Configuración de EC2
+**Prerrequisitos:**
+- Contar con la instancia de Amazon EC2 creada.
+- Tener una máquina autorizada previamente con un cliente SSH (opcional).
+
+**Notas:**
+- Si la configuración inicial ha sido terminada, puede ir directamente a [Configuración (continuación)](#config-ec2-continuacion "Configuración (continuación)").
+
+#### Configuración inicial
+1. En la consola de **EC2** desplegar el panel izquierdo, y en la sección **Instances**, hacer click en **Instances**.
+2. Asegurarse que la instancia de EC2 previamente creada esté en estado (columna **Instance state**) _☑ Running_.
+3. Hacer click en el enlace de la columna **Instance ID** correspondiente a la instancia de EC2 previamente creada
+4. En **Instance summary** hacer click a **Connect**.
+5. Seguir las instrucciones de conexión que correspondan al método (_In web browser_ y _In SSH client_).
+6. Actualizar e instalar las dependencias:
+
+```bash
+sudo dnf update
+```
+
+```bash
+sudo dnf install go git
+```
+
+7. Instalar un editor de texto de terminal (opcional).
+
+```bash
+sudo dnf install vim
+```
+
+8. Clonar el repositorio de git:
+
+```bash
+git clone https://github.com/gabrielmc05/sipinna-backend.git
+```
+```bash
+cd sipinna-backend/auth-backend
+```
+
+9. Crear archivos `.env` y `.env.keys` utilizando como plantilla los archivos `.env.sample` y `.env.keys.sample` respectivamente.
+
+```bash
+cp .env.sample .env && cp .env.keys.sample .env.keys
+```
+
+10. Modificar las variables de entorno del archivo `.env` con respecto a la [configuración de la instancia de RDS](#config-rds "Configuración de RDS y comprobación de la conexión"), ejemplo:
+
+> `MARIADB_ROOT_PASSWORD="contrasena-sipinna-db"`
+> `MARIADB_DATABASE="sipinna_db"`
+> `MARIADB_ADDRESS="sipinna-db.xxxxxxxxxxxx.region.rds.amazonaws.com:3308"`
+
+11. Generar una clave simétrica aleatoria de 32 bytes en formato hexadecimal, puede hacerse con `openssl`:
+
+```bash
+openssl rand -hex 32
+```
+
+12. Modificar las variables de entorno del archivo `.env.keys` con respecto a la [configuración de la instancia de RDS](#config-rds "Configuración de RDS y comprobación de la conexión"), **==precuación==**: la variable `ROOT_ADMIN_INITIAL_PASSWORD` se utiliza para el correcto funcionamiento del programa, tras cada ejecución esta contraseña deberá ser cambiada a una contraseña fuerte y almacenada de forma segura. Ejemplo:
+
+> `MARIADB_DATABASE_SYMMETRIC_KEY="c6e88cff37844d1243a794011440993297287d36292b0e4299c60e9083bc2429"`
+> `ROOT_ADMIN_INITIAL_PASSWORD="administrador12345"`
+
+13. Copiar el archivo certificado CA `global-bundle.pem` a la carpeta actual, para más información consulte el punto 3 de [Configuración de RDS y comprobación de la conexión](#config-rds "Configuración de RDS y comprobación de la conexión")
+
+#### Configuración (continuación) {#config-ec2-continuacion}
+1. Actualizar el repositorio (mantenerse en la rama de producción: `main`).
+
+```bash
+git pull
+```
+
+2. Compilar el programa, editar el archivo `go.mod` si la versión disponible de `go` es distinta a la versión del módulo.
+
+```bash
+go build
+```
+
+3. Ejecutar el programa.
+
+```bash
+./auth-backend
+```
+```
+
+
