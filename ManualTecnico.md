@@ -11,6 +11,8 @@ Autores:
 
 **¡Atención!** Por motivos de convención, los comandos, secciones y opciones cuyo uso se implique para los servicios necesarios, se redactarán en su versión inglesa.
 
+---
+
 ## Requerimientos de hardware y software
 ### Hardware y capacidad
 - **Amazon EC2:** instancia Linux para ejecutar `auth-backend`. La familia _t3_ utiliza arquitectura x86-64; si se desea usar ARM64, elegir una familia compatible como _t4g_. El tamaño debe definirse con pruebas de carga y el número esperado de usuarios; _t3.small_ puede servir como punto de partida de pruebas, no como capacidad garantizada para producción.
@@ -38,6 +40,8 @@ zip -v
 
 En Amazon Linux, se pueden instalar Git y las herramientas disponibles en los repositorios mediante `dnf`. Verificar que la versión de Go instalada satisfaga `go.mod`; no editar `go.mod` únicamente para evitar instalar la versión requerida.
 
+---
+
 ## Dependencias del proyecto
 Los tres componentes están escritos en Go y administran sus dependencias mediante sus archivos `go.mod` y `go.sum`:
 
@@ -49,6 +53,8 @@ Los tres componentes están escritos en Go y administran sus dependencias median
 
 Instalar o descargar las dependencias desde el directorio de cada componente con `go mod download`. No modificar manualmente `go.sum`; se actualiza al cambiar dependencias con las herramientas de Go.
 
+---
+
 ## Cuentas, accesos y credenciales
 - La administración necesita una cuenta de AWS con permisos para crear y configurar EC2, Lambda, RDS, grupos de seguridad e IAM. S3 no se integra actualmente en el código. Para la operación cotidiana, usar roles con permisos mínimos y evitar compartir la cuenta raíz de AWS.
 - El equipo de despliegue requiere acceso SSH autorizado a EC2 y su llave privada correspondiente. Guardar la llave de forma segura y revocar o reemplazar el acceso cuando cambie el personal autorizado.
@@ -57,10 +63,14 @@ Instalar o descargar las dependencias desde el directorio de cada componente con
 - `auth-backend` requiere además `MARIADB_DATABASE_SYMMETRIC_KEY` y `ROOT_ADMIN_INITIAL_PASSWORD`. Generar la clave simétrica para cada instalación y establecer una contraseña inicial segura para el administrador.
 - Guardar las contraseñas, la clave simétrica y llaves privadas en un gestor de secretos autorizado. No incluir sus valores en este manual, el repositorio, capturas de pantalla, paquetes de despliegue ni registros compartidos. Usar una cuenta de prueba para las comprobaciones.
 
-## Licencias
-En el repositorio revisado no se encontró un archivo `LICENSE`; por lo tanto, este manual no atribuye una licencia al código del proyecto. Antes de distribuirlo o reutilizarlo fuera del equipo, los responsables deben definir y documentar la licencia aplicable.
+---
 
-Las dependencias de Go tienen licencias propias, que deben revisarse antes de publicar o distribuir el sistema. Los archivos `go.mod` y `go.sum` registran módulos y versiones, pero no sustituyen un inventario de licencias. También deben verificarse por separado las condiciones de uso de AWS y de las imágenes de contenedor.
+## Licencias
+Estos programas son _software_ libre, puede distribuirlo y/o modificarlos bajo los términos de la **GNU Affero General Public License** 3 o superior, como es publicada por la **Free Software Foundation**.
+
+Las dependencias de Go tienen licencias libres propias, que deben revisarse antes de publicar o distribuir el sistema. Los archivos `go.mod` y `go.sum` registran módulos y versiones. Deberán verificarse por separado las condiciones de uso de AWS y de las imágenes de contenedor.
+
+---
 
 ## Levantar servicios de AWS
 **Prerrequisitos:**
@@ -166,6 +176,7 @@ Las dependencias de Go tienen licencias propias, que deben revisarse antes de pu
     - En las reglas de entrada del grupo de seguridad, permitir **MYSQL/Aurora (TCP 3306)** desde el grupo de seguridad de EC2. Después de configurar `comms-api` Lambda en la VPC, permitir también el tráfico desde el grupo de seguridad de esa función. No abrir el puerto a todas las direcciones de Internet.
 9. Desplegar **Additional configuration** y, en **Initial database name**, ingresar _sipinna_db_.
 10. Revisar el resumen y hacer click en **Create database**. Esperar a que el estado de la instancia sea **Available**.
+
 ---
 
 ## Instalación y configuración de los programas
@@ -240,7 +251,9 @@ cp .env.sample .env && cp .env.keys.sample .env.keys
 10. Modificar las variables de entorno del archivo `.env` con respecto a la [configuración de la instancia de RDS](#configuración-de-rds-y-comprobación-de-la-conexión "Configuración de RDS y comprobación de la conexión"), ejemplo:
 
 > `MARIADB_ROOT_PASSWORD="<contraseña-del-usuario-sipinna_admin>"`
+> 
 > `MARIADB_DATABASE="sipinna_db"`
+> 
 > `MARIADB_ADDRESS="sipinna-db.xxxxxxxxxxxx.region.rds.amazonaws.com:3306"`
 
 11. Generar una clave simétrica aleatoria de 32 bytes en formato hexadecimal, puede hacerse con `openssl`:
@@ -367,8 +380,10 @@ cp .env.sample .env
 2. Configurar estas variables de conexión en **Configuration > Environment variables** de Lambda. Si se trabaja localmente, agregarlas al archivo `.env`, que no debe compartirse. El código actual no obtiene secretos automáticamente de AWS Secrets Manager; esa integración requiere implementarse aparte:
 
 > `MARIADB_ROOT_PASSWORD="<contraseña-del-usuario-sipinna_admin>"`
+> 
 > `MARIADB_DATABASE="sipinna_db"`
-> `MARIADB_ADDRESS="sipinna-db.xxxxxxxxxxxx.region.rds.amazonaws.com:3306"`
+> 
+>`MARIADB_ADDRESS="sipinna-db.xxxxxxxxxxxx.region.rds.amazonaws.com:3306"`
 
 3. Copiar el archivo certificado CA `global-bundle.pem` a la carpeta actual, para más información consulte el punto 3 de [Configuración de RDS y comprobación de la conexión](#configuración-de-rds-y-comprobación-de-la-conexión "Configuración de RDS y comprobación de la conexión")
 
@@ -400,6 +415,8 @@ zip comms-api.zip bootstrap global-bundle.pem
 10. Navegar el sistema de archivos y entrar a la carpeta del repositorio `sipinna-backend/comms-api`.
 11. Seleccionar el archivo `comms-api.zip`.
 12. Hacer click en **Update**.
+
+---
 
 ## Scripts y archivos de datos
 | Archivo | Función | Precauciones |
