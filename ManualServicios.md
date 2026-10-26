@@ -39,13 +39,58 @@
        3. Marcar _Allow HTTPS traffic from the internet_.
     - Para despliegues posteriores (o si no se desea crear un nuevo grupo de seguridad):
         1. En la sección **Firewall (security groups)** seleccionar **Select existing security group**.
-        2. Desplegar el menú **Common security groups** y seleccionar el grupo de seguridad previamente creado.
+        2. En **Common security groups** desplegar **Select security groups** y seleccionar el grupo de seguridad previamente creado.
 8. Desplegar el menú derecho **Summary**.
     - Hacer click en **Launch instance**. 
 
 ### Instancia Lambda (auth-API)
+1. En la consola de Lambda desplegar el panel izquierdo, y hacer click en **Event functions**. 
+2. Hacer click en el botón **Create Event Function**.
+3. En **Basic information**:
+    - En **Function name** ingresar un nombre adecuado (se sugiere: _auth-api_).
+    - En **Runtime** desplegar las opciones y seleccionar _Amazon Linux 2023_.
+4. En **Custom settings**, desplegar **Additional settings**.
+    - En la sección **General**, marcar _ARM64 architecture_.
+    - En la sección **General**, marcar _Custom execution role_. Se desplegará el menú lateral **Configure custom execution role**.
+        - Para despliegue inicial (o si se desea crear un nuevo rol):
+            1. Hacer click en **Create new role**.
+            2. Asignar un nombre adecuado.
+            3. En **Additional policy**, asignar la política deseada.
+            4. Hacer click en **Create role**.
+            5. Hacer click en **Save**.
+        - Para despliegues posteriores (o si no se desea crear un nuevo rol):
+            1. Desplegar **Choose an existing role**.
+            2. Seleccionar un rol existente (para pruebas iniciales, se sugiere el rol _LabRole_ si es que existe).
+            3. Hacer click en **Save**.
+    - En la sección **Networking**, marcar _Function URL_. Se desplegará el menú lateral **Configure function url**.
+        1. En **Auth type** marcar _NONE_.
+        2. En **Invoke mode** marcar _Configure cross-origin resource sharing (CORS)_.
+        3. Hacer click en **Save**.
+5. Hacer click en **Create Event Function**.
 
 ### Instancia Lambda (comms-API)
+1. En la consola de Lambda desplegar el panel izquierdo, y hacer click en **Event functions**. 
+2. Hacer click en el botón **Create Event Function**.
+3. En **Basic information**:
+    - En **Function name** ingresar un nombre adecuado (se sugiere: _comms-api_).
+    - En **Runtime** desplegar las opciones y seleccionar _Amazon Linux 2023_.
+4. En **Custom settings**, desplegar **Additional settings**.
+    - En la sección **General**, marcar _ARM64 architecture_.
+    - En la sección **General**, marcar _Custom execution role_. Se desplegará el menú lateral **Configure custom execution role**.
+        - Para despliegue inicial (o si se desea crear un nuevo rol):
+            1. Hacer click en **Create new role**.
+            2. Asignar un nombre adecuado.
+            3. En **Additional policy**, asignar la política deseada.
+            4. Hacer click en **Create role**.
+            5. Hacer click en **Save**.
+        - Para despliegues posteriores (o si no se desea crear un nuevo rol):
+            1. Desplegar **Choose an existing role**.
+            2. Seleccionar un rol existente (para pruebas iniciales, se sugiere el rol _LabRole_ si es que existe).
+            3. Hacer click en **Save**.
+    - En la sección **Networking**, marcar _Function URL_. Se desplegará el menú lateral **Configure function url**.
+        1. En **Auth type** marcar _NONE_.
+        2. Hacer click en **Save**.
+5. Hacer click en **Create Event Function**.
 
 ### Instancia RDS
 1. En la consola de **RDS**, desplegar el panel izquierdo y hacer click en **Databases**.
