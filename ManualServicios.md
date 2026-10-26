@@ -2,7 +2,7 @@
 
 ---
 
-**==¡Atención!==** Por motivos de convención, los comandos, secciones y opciones cuyo uso se implique para los servicios necesarios, se redactarán en su versión inglesa.
+==**¡Atención!**== Por motivos de convención, los comandos, secciones y opciones cuyo uso se implique para los servicios necesarios, se redactarán en su versión inglesa.
 
 ## Levantar servicios de AWS
 **Prerrequisitos:**
@@ -113,7 +113,7 @@
 
 ## Instalación y configuración de los programas
 
-### Configuración de RDS y comprobación de la conexión {#config-rds}
+### Configuración de RDS y comprobación de la conexión
 1. En la consola de **RDS**, abrir la instancia creada y, en **Connectivity & security**, copiar el **Endpoint** y el puerto. El puerto predeterminado de MariaDB en RDS es `3306`.
 2. Conectarse al endpoint desde la instancia EC2 o desde una máquina autorizada temporalmente por el grupo de seguridad, y cargar los archivos SQL del proyecto, en este orden:
     1. `db/schema.sql`
@@ -138,7 +138,7 @@
 - Tener una máquina autorizada previamente con un cliente SSH (opcional).
 
 **Notas:**
-- Si la configuración inicial ha sido terminada, puede ir directamente a [Configuración (continuación)](#config-ec2-continuacion "Configuración (continuación)").
+- Si la configuración inicial ha sido terminada, puede ir directamente a [Configuración (continuación)](#configuración-continuación "Configuración (continuación)").
 
 #### Configuración inicial
 1. En la consola de **EC2** desplegar el panel izquierdo, y en la sección **Instances**, hacer click en **Instances**.
@@ -189,14 +189,14 @@ cp .env.sample .env && cp .env.keys.sample .env.keys
 openssl rand -hex 32
 ```
 
-12. Modificar las variables de entorno del archivo `.env.keys` con respecto a la [configuración de la instancia de RDS](#config-rds "Configuración de RDS y comprobación de la conexión"), **==precuación==**: la variable `ROOT_ADMIN_INITIAL_PASSWORD` se utiliza para el correcto funcionamiento del programa, tras cada ejecución esta contraseña deberá ser cambiada a una contraseña fuerte y almacenada de forma segura. Ejemplo:
+12. Modificar las variables de entorno del archivo `.env.keys` con respecto a la [configuración de la instancia de RDS](#configuración-de-rds-y-comprobación-de-la-conexión "Configuración de RDS y comprobación de la conexión"), ==**precuación**==: la variable `ROOT_ADMIN_INITIAL_PASSWORD` se utiliza para el correcto funcionamiento del programa, tras cada ejecución esta contraseña deberá ser cambiada a una contraseña fuerte y almacenada de forma segura. Ejemplo:
 
 > `MARIADB_DATABASE_SYMMETRIC_KEY="c6e88cff37844d1243a794011440993297287d36292b0e4299c60e9083bc2429"`
 > `ROOT_ADMIN_INITIAL_PASSWORD="administrador12345"`
 
-13. Copiar el archivo certificado CA `global-bundle.pem` a la carpeta actual, para más información consulte el punto 3 de [Configuración de RDS y comprobación de la conexión](#config-rds "Configuración de RDS y comprobación de la conexión")
+13. Copiar el archivo certificado CA `global-bundle.pem` a la carpeta actual, para más información consulte el punto 3 de [Configuración de RDS y comprobación de la conexión](#configuración-de-rds-y-comprobación-de-la-conexión "Configuración de RDS y comprobación de la conexión")
 
-#### Configuración (continuación) {#config-ec2-continuacion}
+#### Configuración (continuación)
 1. Actualizar el repositorio (mantenerse en la rama de producción: `main`).
 
 ```bash
@@ -214,6 +214,3 @@ go build
 ```bash
 ./auth-backend
 ```
-```
-
-
