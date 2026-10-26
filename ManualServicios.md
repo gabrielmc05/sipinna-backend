@@ -233,7 +233,7 @@ cd sipinna-backend/auth-API
 ```
 
 **Notas:**
-- Si la configuración inicial ha sido terminada, puede ir directamente a [Configuración de Lambda (auth-api) (continuación)](#configuración-de-lambda-auth-api-continuación "Configuración de Lambda (auth-api) (continuación)").
+- Si la configuración inicial ha sido terminada, puede ir directamente a [Configuración de Lambda (auth-API) (continuación)](#configuración-de-lambda-auth-api-continuación "Configuración de Lambda (auth-API) (continuación)").
 
 #### Configuración de Lambda (auth-API) inicial
 1. Crear archivo `.env` utilizando como plantilla el archivo `.env.sample`.
@@ -290,7 +290,7 @@ cd sipinna-backend/comms-API
 ```
 
 **Notas:**
-- Si la configuración inicial ha sido terminada, puede ir directamente a [Configuración de Lambda (auth-api) (continuación)](#configuración-de-lambda-comms-api-continuación "Configuración de Lambda (auth-api) (continuación)").
+- Si la configuración inicial ha sido terminada, puede ir directamente a [Configuración de Lambda (comms-API) (continuación)](#configuración-de-lambda-comms-api-continuación "Configuración de Lambda (comms-API) (continuación)").
 
 #### Configuración de Lambda (comms-API) inicial
 1. Crear archivo `.env` utilizando como plantilla el archivo `.env.sample`.
