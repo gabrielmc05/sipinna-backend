@@ -1,6 +1,12 @@
-# Manual de creación, configuración e instalación de los servicios de SIPINNA-app en AWS (v1.0, octubre 2026)
+# Manual técnico de creación, configuración e instalación de los servicios de SIPINNA-app en AWS (v1.0, octubre 2026)
 
 ---
+Autores:
+- Ian Morgado Villaseñor A01754495
+- Ana Karen Abrego Flores A01753979
+- Juan Pablo Rodriguez Carrillo A01802063
+- Rodrigo Castillo Francisco A01799191
+- Gabriel de Jesús Manzo Cuevas A01803514
 
 **¡Atención!** Por motivos de convención, los comandos, secciones y opciones cuyo uso se implique para los servicios necesarios, se redactarán en su versión inglesa.
 
