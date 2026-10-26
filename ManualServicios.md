@@ -2,7 +2,7 @@
 
 ---
 
-==**¡Atención!**== Por motivos de convención, los comandos, secciones y opciones cuyo uso se implique para los servicios necesarios, se redactarán en su versión inglesa.
+**¡Atención!** Por motivos de convención, los comandos, secciones y opciones cuyo uso se implique para los servicios necesarios, se redactarán en su versión inglesa.
 
 ## Levantar servicios de AWS
 **Prerrequisitos:**
@@ -138,9 +138,9 @@
 - Tener una máquina autorizada previamente con un cliente SSH (opcional).
 
 **Notas:**
-- Si la configuración inicial ha sido terminada, puede ir directamente a [Configuración (continuación)](#configuración-continuación "Configuración (continuación)").
+- Si la configuración inicial ha sido terminada, puede ir directamente a [Configuración de EC2 (continuación)](#configuración-de-ec2-continuación "Configuración de EC2 (continuación)").
 
-#### Configuración inicial
+#### Configuración de EC2 inicial
 1. En la consola de **EC2** desplegar el panel izquierdo, y en la sección **Instances**, hacer click en **Instances**.
 2. Asegurarse que la instancia de EC2 previamente creada esté en estado (columna **Instance state**) _☑ Running_.
 3. Hacer click en el enlace de la columna **Instance ID** correspondiente a la instancia de EC2 previamente creada
@@ -167,6 +167,7 @@ sudo dnf install vim
 ```bash
 git clone https://github.com/gabrielmc05/sipinna-backend.git
 ```
+
 ```bash
 cd sipinna-backend/auth-backend
 ```
@@ -177,7 +178,7 @@ cd sipinna-backend/auth-backend
 cp .env.sample .env && cp .env.keys.sample .env.keys
 ```
 
-10. Modificar las variables de entorno del archivo `.env` con respecto a la [configuración de la instancia de RDS](#config-rds "Configuración de RDS y comprobación de la conexión"), ejemplo:
+10. Modificar las variables de entorno del archivo `.env` con respecto a la [configuración de la instancia de RDS](#configuración-de-rds-y-comprobación-de-la-conexión "Configuración de RDS y comprobación de la conexión"), ejemplo:
 
 > `MARIADB_ROOT_PASSWORD="contrasena-sipinna-db"`
 > `MARIADB_DATABASE="sipinna_db"`
@@ -189,14 +190,14 @@ cp .env.sample .env && cp .env.keys.sample .env.keys
 openssl rand -hex 32
 ```
 
-12. Modificar las variables de entorno del archivo `.env.keys` con respecto a la [configuración de la instancia de RDS](#configuración-de-rds-y-comprobación-de-la-conexión "Configuración de RDS y comprobación de la conexión"), ==**precuación**==: la variable `ROOT_ADMIN_INITIAL_PASSWORD` se utiliza para el correcto funcionamiento del programa, tras cada ejecución esta contraseña deberá ser cambiada a una contraseña fuerte y almacenada de forma segura. Ejemplo:
+12. Modificar las variables de entorno del archivo `.env.keys` con respecto a la [configuración de la instancia de RDS](#configuración-de-rds-y-comprobación-de-la-conexión "Configuración de RDS y comprobación de la conexión"), **precuación**: la variable `ROOT_ADMIN_INITIAL_PASSWORD` se utiliza para el correcto funcionamiento del programa, tras cada ejecución esta contraseña deberá ser cambiada a una contraseña fuerte y almacenada de forma segura. Ejemplo:
 
 > `MARIADB_DATABASE_SYMMETRIC_KEY="c6e88cff37844d1243a794011440993297287d36292b0e4299c60e9083bc2429"`
 > `ROOT_ADMIN_INITIAL_PASSWORD="administrador12345"`
 
 13. Copiar el archivo certificado CA `global-bundle.pem` a la carpeta actual, para más información consulte el punto 3 de [Configuración de RDS y comprobación de la conexión](#configuración-de-rds-y-comprobación-de-la-conexión "Configuración de RDS y comprobación de la conexión")
 
-#### Configuración (continuación)
+#### Configuración de EC2 (continuación)
 1. Actualizar el repositorio (mantenerse en la rama de producción: `main`).
 
 ```bash
@@ -214,3 +215,61 @@ go build
 ```bash
 ./auth-backend
 ```
+
+### Configuración de Lambda (auth-API)
+**Prerrequisitos:**
+- Contar con la instancia de AWS Lambda creada y correspondiente a esta función.
+- Haber terminado la [configuración de la instancia de EC2](#configuración-de-ec2 "Configuración de EC2").
+- Tener copiado el DNS público de la instancia de EC2 (se encuentra en su panel de configuración), ejemplo: `ec2-xxx-xxx-xxx-xxx.compute-1.amazonaws.com`.
+- Tener una máquina que cuente con las dependencias para la compilación y despliegue del programa (`go`, `gcc`, `zip` y `git`).
+- Haber clonado el repositorio del `git` en esa máquina:
+
+```bash
+git clone https://github.com/gabrielmc05/sipinna-backend.git
+```
+
+```bash
+cd sipinna-backend/auth-API
+```
+
+**Notas:**
+- Si la configuración inicial ha sido terminada, puede ir directamente a [Configuración de Lambda (auth-api) (continuación)](#configuración-de-lambda-auth-api-continuación "Configuración de Lambda (auth-api) (continuación)").
+
+#### Configuración de Lambda (auth-api) inicial
+1. Crear archivo `.env` utilizando como plantilla el archivo `.env.sample`.
+
+```bash
+cp .env.sample .env
+```
+
+2. Modificar las variables de entorno del archivo `.env` con respecto a la [configuración de la instancia de EC2](#configuración-de-ec2 "Configuración de EC2") y a su puerto correspondiente, ejemplo:
+
+> `AUTH_BACKEND_URL="https://ec2-xxx-xxx-xxx-xxx.compute-1.amazonaws.com:8080"`
+
+#### Configuración de Lambda (auth-api) (continuación)
+1. Actualizar el repositorio (mantenerse en la rama de producción: `main`).
+
+```bash
+git pull
+```
+
+2. Compilar el programa, el ejecutable para la instancia de Lambda quedará en un archivo con nombre `bootstrap`.
+
+```bash
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o bootstrap -tags lambda.norpc
+```
+
+3. Crear el paquete de despliegue en un archivo `.zip`.
+
+```bash
+zip auth-api.zip bootstrap .env
+```
+6. Abrir la consola de **Lambda**.
+5. En la consola de **Lambda** desplegar el panel izquierdo, y hacer click en **Event Functions**.
+6. Hacer click en el enlace de la instancia correspondiente (en la columna **Function name**).
+7. En la sección **Code**, en la ventana **Code source**, desplegar **Update**.
+8. Hacer click en la opción _Update from a .zip file_.
+9. Hacer click en **Choose file**.
+10. Navegar el sistema de archivos y entrar a la carpeta del repositorio `sipinna-backend/auth-API`.
+11. Seleccionar el archivo `auth-api.zip`.
+12. Hacer click en **Update**.
