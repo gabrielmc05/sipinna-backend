@@ -235,7 +235,7 @@ cd sipinna-backend/auth-API
 **Notas:**
 - Si la configuración inicial ha sido terminada, puede ir directamente a [Configuración de Lambda (auth-api) (continuación)](#configuración-de-lambda-auth-api-continuación "Configuración de Lambda (auth-api) (continuación)").
 
-#### Configuración de Lambda (auth-api) inicial
+#### Configuración de Lambda (auth-API) inicial
 1. Crear archivo `.env` utilizando como plantilla el archivo `.env.sample`.
 
 ```bash
@@ -246,7 +246,7 @@ cp .env.sample .env
 
 > `AUTH_BACKEND_URL="https://ec2-xxx-xxx-xxx-xxx.compute-1.amazonaws.com:8080"`
 
-#### Configuración de Lambda (auth-api) (continuación)
+#### Configuración de Lambda (auth-API) (continuación)
 1. Actualizar el repositorio (mantenerse en la rama de producción: `main`).
 
 ```bash
@@ -264,7 +264,8 @@ GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o bootstrap -tags lambda.norpc
 ```bash
 zip auth-api.zip bootstrap .env
 ```
-6. Abrir la consola de **Lambda**.
+
+4. Abrir la consola de **Lambda**.
 5. En la consola de **Lambda** desplegar el panel izquierdo, y hacer click en **Event Functions**.
 6. Hacer click en el enlace de la instancia correspondiente (en la columna **Function name**).
 7. En la sección **Code**, en la ventana **Code source**, desplegar **Update**.
@@ -272,4 +273,65 @@ zip auth-api.zip bootstrap .env
 9. Hacer click en **Choose file**.
 10. Navegar el sistema de archivos y entrar a la carpeta del repositorio `sipinna-backend/auth-API`.
 11. Seleccionar el archivo `auth-api.zip`.
+12. Hacer click en **Update**.
+
+### Configuración de Lambda (comms-API)
+**Prerrequisitos:**
+- Contar con la instancia de AWS Lambda creada y correspondiente a esta función.
+- Tener una máquina que cuente con las dependencias para la compilación y despliegue del programa (`go`, `gcc`, `zip` y `git`).
+- Haber clonado el repositorio del `git` en esa máquina:
+
+```bash
+git clone https://github.com/gabrielmc05/sipinna-backend.git
+```
+
+```bash
+cd sipinna-backend/comms-API
+```
+
+**Notas:**
+- Si la configuración inicial ha sido terminada, puede ir directamente a [Configuración de Lambda (auth-api) (continuación)](#configuración-de-lambda-comms-api-continuación "Configuración de Lambda (auth-api) (continuación)").
+
+#### Configuración de Lambda (comms-API) inicial
+1. Crear archivo `.env` utilizando como plantilla el archivo `.env.sample`.
+
+```bash
+cp .env.sample .env
+```
+
+2. Modificar las variables de entorno del archivo `.env` con respecto a la [configuración de la instancia de RDS](#configuración-de-rds-y-comprobación-de-la-conexión "Configuración de RDS y comprobación de la conexión"), ejemplo:
+
+> `MARIADB_ROOT_PASSWORD="contrasena-sipinna-db"`
+> `MARIADB_DATABASE="sipinna_db"`
+> `MARIADB_ADDRESS="sipinna-db.xxxxxxxxxxxx.region.rds.amazonaws.com:3308"`
+
+3. Copiar el archivo certificado CA `global-bundle.pem` a la carpeta actual, para más información consulte el punto 3 de [Configuración de RDS y comprobación de la conexión](#configuración-de-rds-y-comprobación-de-la-conexión "Configuración de RDS y comprobación de la conexión")
+
+#### Configuración de Lambda (comms-API) (continuación)
+1. Actualizar el repositorio (mantenerse en la rama de producción: `main`).
+
+```bash
+git pull
+```
+
+2. Compilar el programa, el ejecutable para la instancia de Lambda quedará en un archivo con nombre `bootstrap`.
+
+```bash
+GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o bootstrap -tags lambda.norpc
+```
+
+3. Crear el paquete de despliegue en un archivo `.zip`.
+
+```bash
+zip comms-api.zip bootstrap .env global-bundle.pem
+```
+
+4. Abrir la consola de **Lambda**.
+5. En la consola de **Lambda** desplegar el panel izquierdo, y hacer click en **Event Functions**.
+6. Hacer click en el enlace de la instancia correspondiente (en la columna **Function name**).
+7. En la sección **Code**, en la ventana **Code source**, desplegar **Update**.
+8. Hacer click en la opción _Update from a .zip file_.
+9. Hacer click en **Choose file**.
+10. Navegar el sistema de archivos y entrar a la carpeta del repositorio `sipinna-backend/auth-API`.
+11. Seleccionar el archivo `comms-api.zip`.
 12. Hacer click en **Update**.
